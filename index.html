@@ -3,74 +3,525 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Sugar Partner - Global T1D Dating & Community</title>
-    <!-- Tailwind CSS for rapid, beautiful UI design -->
+    <title>My Sugar Partner - Global T1D Community & Connections</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans">
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
 
     <!-- Header / Navigation -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-rose-600">❤️ MySugarPartner</h1>
-            <nav class="space-x-6 hidden md:block">
-                <a href="#features" class="hover:text-rose-600 font-medium">Why Us</a>
-                <a href="#profiles" class="hover:text-rose-600 font-medium">Find Partners</a>
-                <a href="#join" class="bg-rose-600 text-white px-4 py-2 rounded-full hover:bg-rose-700 transition">Create Profile</a>
-            </nav>
+            <h1 class="text-2xl font-bold text-rose-600 cursor-pointer" onclick="switchView('home')">❤️ MySugarPartner</h1>
+            <div id="nav-actions" class="space-x-4">
+                <button onclick="openModal('auth-modal')" class="bg-rose-600 text-white px-5 py-2 rounded-full hover:bg-rose-700 transition font-medium">Login / Register</button>
+            </div>
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-20 px-4 text-center">
-        <div class="max-w-3xl mx-auto">
-            <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Find Someone Who Truly Understands Your Journey</h2>
-            <p class="text-lg md:text-xl mb-8 text-rose-100">The safe, global community where Type 1 Diabetics connect, share, and find lasting love with people who get the CGM beeps and carb counting.</p>
-            <a href="#join" class="bg-white text-rose-600 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-rose-50 transition">Get Started Free</a>
-        </div>
-    </section>
+    <!-- Main Container Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
 
-    <!-- Featured Profiles Section -->
-    <section id="profiles" class="py-16 max-w-7xl mx-auto px-4">
-        <h3 class="text-3xl font-bold text-center mb-12">Meet Our Community Members</h3>
-        <div id="profile-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Dynamic profiles will load here via JavaScript -->
-        </div>
-    </section>
-
-    <!-- Join / Registration Section -->
-    <section id="join" class="bg-white py-16 border-t border-slate-200">
-        <div class="max-w-xl mx-auto px-4">
-            <h3 class="text-3xl font-bold text-center mb-6">Create Your Profile</h3>
-            <form id="signup-form" class="space-y-4 bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
-                <div>
-                    <label class="block font-medium mb-1">Your Name / Alias</label>
-                    <input type="text" id="name" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none">
+        <!-- VIEW 1: HOME / LANDING -->
+        <div id="view-home" class="space-y-12">
+            <section class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-20 px-4 text-center rounded-3xl shadow-xl">
+                <div class="max-w-3xl mx-auto">
+                    <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Find Someone Who Truly Understands Your Journey</h2>
+                    <p class="text-lg md:text-xl mb-8 text-rose-100">The global community where Type 1 Diabetics connect safely. Note: This space is designed for dating, exploring live-in arrangements, or companionship first—marriage decisions come later naturally!</p>
+                    <button onclick="openModal('auth-modal')" class="bg-white text-rose-600 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-rose-50 transition">Get Started Now</button>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+            </section>
+        </div>
+
+        <!-- VIEW 2: PROFILE DASHBOARD & SEARCH -->
+        <div id="view-dashboard" class="hidden space-y-8">
+            <!-- User Status Banner -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <img id="dash-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" class="w-16 h-16 rounded-full object-cover border-2 border-rose-500" alt="Avatar">
                     <div>
-                        <label class="block font-medium mb-1">Age</label>
-                        <input type="number" id="age" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block font-medium mb-1">Country</label>
-                        <input type="text" id="country" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none">
+                        <h3 id="dash-name" class="text-xl font-bold">User Name</h3>
+                        <p id="dash-email" class="text-sm text-slate-500">user@email.com</p>
                     </div>
                 </div>
-                <div>
-                    <label class="block font-medium mb-1">Short Bio & Pump/CGM Setup</label>
-                    <textarea id="bio" rows="3" required placeholder="Diagnosed in 2015, use Omnipod & Dexcom..." class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none"></textarea>
+                <div class="flex gap-3">
+                    <button onclick="openModal('profile-modal')" class="bg-slate-100 px-4 py-2 rounded-xl text-slate-700 font-medium hover:bg-slate-200 transition">Edit Profile</button>
+                    <button onclick="logout()" class="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl font-medium hover:bg-rose-100 transition">Log Out</button>
                 </div>
-                <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-lg hover:bg-rose-700 transition">Publish Profile</button>
-            </form>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Gender Preference</label>
+                    <select id="filter-gender" onchange="filterProfiles()" class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="">All Genders</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Country</label>
+                    <input type="text" id="filter-country" oninput="filterProfiles()" placeholder="Filter by country..." class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Looking For</label>
+                    <select id="filter-goal" onchange="filterProfiles()" class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="">All Intentions</option>
+                        <option value="Long-term">Long-term Relationship</option>
+                        <option value="Short-term">Short-term Relationship</option>
+                        <option value="Dating">Dating & Companionship</option>
+                        <option value="Live-in">Live-in Relationship</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="resetFilters()" class="w-full bg-slate-100 text-slate-600 font-medium py-2.5 rounded-xl hover:bg-slate-200 transition">Reset Filters</button>
+                </div>
+            </div>
+
+            <!-- Notifications / Requests & Chat Status Box -->
+            <div id="notifications-box" class="hidden bg-rose-50 border border-rose-200 p-4 rounded-2xl text-rose-800 text-sm flex justify-between items-center">
+                <span id="notification-text">You have pending match requests!</span>
+            </div>
+
+            <!-- Profiles Grid -->
+            <div>
+                <h3 class="text-2xl font-bold mb-6">Discover T1D Partners</h3>
+                <div id="profile-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Cards injected dynamically -->
+                </div>
+            </div>
         </div>
-    </section>
+
+    </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-white py-8 text-center">
+    <footer class="bg-slate-900 text-white py-8 text-center mt-12">
         <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
     </footer>
 
-    <script src="script.js"></script>
+    <!-- MODAL 1: AUTHENTICATION (Login / Register with OTP) -->
+    <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative space-y-6">
+            <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            <div class="text-center">
+                <h3 class="text-2xl font-bold">Welcome to MySugarPartner</h3>
+                <p class="text-sm text-slate-500 mt-1">Sign in or register securely via Email or Phone OTP</p>
+            </div>
+
+            <!-- Step 1: Input Identifier -->
+            <div id="auth-step-1" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email Address or Phone Number</label>
+                    <input type="text" id="auth-input" placeholder="e.g. user@example.com or +15550192" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                
+                <!-- Terms and Conditions Checkbox -->
+                <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <input type="checkbox" id="terms-check" class="mt-1 w-4 h-4 text-rose-600 rounded">
+                    <label for="terms-check" class="text-xs text-slate-600 leading-relaxed">
+                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. I understand this space is *not* exclusively for direct marriage matchmaking; members connect for dating, live-in relationships, or companionship first, and decide on marriage mutually later.
+                    </label>
+                </div>
+
+                <button onclick="sendOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send OTP</button>
+            </div>
+
+            <!-- Step 2: Verify OTP -->
+            <div id="auth-step-2" class="space-y-4 hidden">
+                <div class="bg-rose-50 text-rose-700 p-3 rounded-xl text-center text-sm font-medium">
+                    Simulated OTP sent! Use code: <strong class="underline">1234</strong>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Enter 4-Digit OTP</label>
+                    <input type="text" id="otp-input" maxlength="4" placeholder="1234" class="w-full text-center tracking-widest text-2xl border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <button onclick="verifyOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Verify & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: COMPLETE / EDIT PROFILE DETAILS -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-lg p-8 rounded-3xl shadow-2xl relative space-y-6 my-8">
+            <h3 class="text-2xl font-bold">Your Profile Information</h3>
+            <form id="profile-form" onsubmit="saveProfile(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Full Name</label>
+                    <input type="text" id="p-name" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Age</label>
+                        <input type="number" id="p-age" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Gender</label>
+                        <select id="p-gender" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Country / Location</label>
+                        <input type="text" id="p-country" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Looking For</label>
+                        <select id="p-goal" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="Long-term">Long-term Relationship</option>
+                            <option value="Short-term">Short-term Relationship</option>
+                            <option value="Dating">Dating & Companionship</option>
+                            <option value="Live-in">Live-in Relationship</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Profile Picture URL</label>
+                    <input type="url" id="p-avatar" placeholder="https://images.unsplash.com/..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Hobbies & T1D Setup (Pump/CGM)</label>
+                    <textarea id="p-hobbies" rows="3" placeholder="Dexcom G7, Omnipod 5, hiking, reading..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Save Profile</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: LIVE CHAT WINDOW -->
+    <div id="chat-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg h-[550px] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
+            <!-- Chat Header -->
+            <div class="bg-rose-600 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img id="chat-peer-avatar" src="" class="w-10 h-10 rounded-full object-cover border border-white" alt="Peer">
+                    <div>
+                        <h4 id="chat-peer-name" class="font-bold">Chat Partner</h4>
+                        <span class="text-xs text-rose-100">Connected T1D Match</span>
+                    </div>
+                </div>
+                <button onclick="closeModal('chat-modal')" class="text-white hover:text-rose-200 text-xl font-bold">&times;</button>
+            </div>
+            <!-- Chat Messages Container -->
+            <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-50">
+                <!-- Messages appended dynamically -->
+            </div>
+            <!-- Chat Input Form -->
+            <form onsubmit="sendChatMessage(event)" class="p-3 bg-white border-t flex gap-2">
+                <input type="text" id="chat-input-text" placeholder="Type a message..." autocomplete="off" class="flex-grow border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                <button type="submit" class="bg-rose-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-rose-700 transition">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State Management
+        let currentUser = JSON.parse(localStorage.getItem("msp_user")) || null;
+        let mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || [
+            { id: 1, name: "Jessica Taylor", age: 27, gender: "Female", country: "United States", goal: "Dating", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80", hobbies: "Dexcom G7, running, yoga, traveling." },
+            { id: 2, name: "Marcus Vance", age: 31, gender: "Male", country: "Canada", goal: "Live-in", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80", hobbies: "Omnipod user, rock climbing, tech enthusiast." },
+            { id: 3, name: "Priya Patel", age: 25, gender: "Female", country: "India", goal: "Long-term", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80", hobbies: "Medtronic pump, sketching, reading medical tech blogs." }
+        ];
+        
+        let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; // Format: { profileId: status ('pending', 'accepted', 'rejected') }
+        let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; // Format: { profileId: [ {sender, text} ] }
+        let activeChatId = null;
+
+        // Initialize application view state on load
+        window.onload = function() {
+            if (currentUser) {
+                switchView('dashboard');
+                updateDashboardUI();
+                renderProfiles(mockProfiles);
+                checkNotifications();
+            } else {
+                switchView('home');
+            }
+        };
+
+        function switchView(viewName) {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+
+            if (viewName === 'home') {
+                document.getElementById('view-home').classList.remove('hidden');
+                document.getElementById('nav-actions').innerHTML = `<button onclick="openModal('auth-modal')" class="bg-rose-600 text-white px-5 py-2 rounded-full hover:bg-rose-700 transition font-medium">Login / Register</button>`;
+            } else if (viewName === 'dashboard') {
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                document.getElementById('nav-actions').innerHTML = `<button onclick="logout()" class="text-rose-600 font-semibold hover:underline">Log Out</button>`;
+            }
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            if (id === 'profile-modal' && currentUser) {
+                document.getElementById('p-name').value = currentUser.name || '';
+                document.getElementById('p-age').value = currentUser.age || '';
+                document.getElementById('p-gender').value = currentUser.gender || 'Female';
+                document.getElementById('p-country').value = currentUser.country || '';
+                document.getElementById('p-goal').value = currentUser.goal || 'Dating';
+                document.getElementById('p-avatar').value = currentUser.avatar || '';
+                document.getElementById('p-hobbies').value = currentUser.hobbies || '';
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // --- AUTHENTICATION & OTP LOGIC ---
+        let tempAuthInput = "";
+        function sendOTP() {
+            const inputVal = document.getElementById('auth-input').value.trim();
+            const termsChecked = document.getElementById('terms-check').checked;
+
+            if (!inputVal) {
+                alert("Please enter a valid email address or phone number.");
+                return;
+            }
+            if (!termsChecked) {
+                alert("You must agree to the Terms & Conditions regarding dating, live-in relationships, and community rules.");
+                return;
+            }
+
+            tempAuthInput = inputVal;
+            document.getElementById('auth-step-1').classList.add('hidden');
+            document.getElementById('auth-step-2').classList.remove('hidden');
+        }
+
+        function verifyOTP() {
+            const otp = document.getElementById('otp-input').value.trim();
+            if (otp === "1234") {
+                // Check if user already exists in local storage profile or create basic record
+                currentUser = {
+                    identifier: tempAuthInput,
+                    name: "New Member",
+                    age: 25,
+                    gender: "Female",
+                    country: "Global",
+                    goal: "Dating",
+                    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80",
+                    hobbies: "Type 1 Diabetic warrior looking to connect!"
+                };
+                localStorage.setItem("msp_user", JSON.stringify(currentUser));
+                closeModal('auth-modal');
+                switchView('dashboard');
+                updateDashboardUI();
+                renderProfiles(mockProfiles);
+                
+                // Prompt user to update profile details right after first login
+                openModal('profile-modal');
+            } else {
+                alert("Incorrect OTP code. Please use '1234'");
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem("msp_user");
+            switchView('home');
+        }
+
+        function updateDashboardUI() {
+            if (!currentUser) return;
+            document.getElementById('dash-name').innerText = currentUser.name;
+            document.getElementById('dash-email').innerText = currentUser.identifier;
+            document.getElementById('dash-avatar').src = currentUser.avatar;
+        }
+
+        // --- PROFILE CONFIGURATION ---
+        function saveProfile(e) {
+            e.preventDefault();
+            currentUser.name = document.getElementById('p-name').value;
+            currentUser.age = document.getElementById('p-age').value;
+            currentUser.gender = document.getElementById('p-gender').value;
+            currentUser.country = document.getElementById('p-country').value;
+            currentUser.goal = document.getElementById('p-goal').value;
+            currentUser.avatar = document.getElementById('p-avatar').value;
+            currentUser.hobbies = document.getElementById('p-hobbies').value;
+
+            localStorage.setItem("msp_user", JSON.stringify(currentUser));
+            updateDashboardUI();
+            closeModal('profile-modal');
+            alert("Profile successfully updated!");
+        }
+
+        // --- FILTERING LOGIC ---
+        function filterProfiles() {
+            const genderVal = document.getElementById('filter-gender').value.toLowerCase();
+            const countryVal = document.getElementById('filter-country').value.toLowerCase();
+            const goalVal = document.getElementById('filter-goal').value.toLowerCase();
+
+            const filtered = mockProfiles.filter(p => {
+                const matchGender = genderVal ? p.gender.toLowerCase() === genderVal : true;
+                const matchCountry = countryVal ? p.country.toLowerCase().includes(countryVal) : true;
+                const matchGoal = goalVal ? p.goal.toLowerCase().includes(goalVal) : true;
+                return matchGender && matchCountry && matchGoal;
+            });
+
+            renderProfiles(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-gender').value = "";
+            document.getElementById('filter-country').value = "";
+            document.getElementById('filter-goal').value = "";
+            renderProfiles(mockProfiles);
+        }
+
+        // --- MATCHMAKING & REQUEST LOGIC ---
+        function renderProfiles(profilesArray) {
+            const grid = document.getElementById('profile-grid');
+            grid.innerHTML = "";
+
+            if (profilesArray.length === 0) {
+                grid.innerHTML = `<p class="text-slate-500 col-span-full text-center py-8">No profiles found matching your search filters.</p>`;
+                return;
+            }
+
+            profilesArray.forEach(p => {
+                const reqStatus = requests[p.id] || 'none'; // 'none', 'pending', 'accepted', 'rejected'
+                
+                let actionBtnHTML = '';
+                if (reqStatus === 'none') {
+                    actionBtnHTML = `<button onclick="sendRequest(${p.id})" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Send Request ❤️</button>`;
+                } else if (reqStatus === 'pending') {
+                    actionBtnHTML = `<button disabled class="w-full bg-amber-50 text-amber-600 font-medium py-2.5 rounded-xl cursor-not-allowed">Request Pending ⏳</button>`;
+                } else if (reqStatus === 'rejected') {
+                    actionBtnHTML = `<button onclick="sendRequest(${p.id})" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Request Rejected. Try Again?</button>`;
+                } else if (reqStatus === 'accepted') {
+                    actionBtnHTML = `<button onclick="openChat(${p.id})" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm">Open Live Chat 💬</button>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4 hover:shadow-md transition";
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <img src="${p.avatar}" class="w-16 h-16 rounded-full object-cover border" alt="Profile">
+                        <div>
+                            <h4 class="text-lg font-bold">${p.name}, ${p.age}</h4>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-semibold">${p.country}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-rose-600 uppercase tracking-wider">Goal: ${p.goal}</span>
+                        <p class="text-slate-600 text-sm mt-1">${p.hobbies}</p>
+                    </div>
+                    <div class="pt-2">
+                        ${actionBtnHTML}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function sendRequest(profileId) {
+            requests[profileId] = 'pending';
+            localStorage.setItem("msp_requests", JSON.stringify(requests));
+            
+            // Simulation: Automatically simulate peer response after 4 seconds (either accept or reject randomly to test your features!)
+            setTimeout(() => {
+                // Let's alternate or randomly decide response
+                const isAccepted = Math.random() > 0.4; // 60% chance accepted, 40% rejected
+                if (isAccepted) {
+                    requests[profileId] = 'accepted';
+                } else {
+                    requests[profileId] = 'rejected';
+                }
+                localStorage.setItem("msp_requests", JSON.stringify(requests));
+                renderProfiles(mockProfiles);
+                checkNotifications();
+            }, 3500);
+
+            renderProfiles(mockProfiles);
+            alert("Connection request sent successfully!");
+        }
+
+        function checkNotifications() {
+            const notificationBox = document.getElementById('notifications-box');
+            const notificationText = document.getElementById('notification-text');
+            
+            let hasRejected = Object.values(requests).includes('rejected');
+            let hasAccepted = Object.values(requests).includes('accepted');
+
+            if (hasRejected) {
+                notificationBox.classList.remove('hidden');
+                notificationText.innerHTML = `⚠️ One of your match requests was declined. Don't worry, explore other T1D partners!`;
+            } else if (hasAccepted) {
+                notificationBox.classList.remove('hidden');
+                notificationText.innerHTML = `🎉 Great news! A connection request has been accepted. You can now chat directly!`;
+            } else {
+                notificationBox.classList.add('hidden');
+            }
+        }
+
+        // --- REAL-TIME CHAT SIMULATION ---
+        function openChat(profileId) {
+            activeChatId = profileId;
+            const peer = mockProfiles.find(p => p.id === profileId);
+            
+            document.getElementById('chat-peer-name').innerText = peer.name;
+            document.getElementById('chat-peer-avatar').src = peer.avatar;
+
+            renderChatMessages();
+            openModal('chat-modal');
+        }
+
+        function renderChatMessages() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = "";
+
+            if (!chatLogs[activeChatId]) {
+                chatLogs[activeChatId] = [
+                    { sender: 'peer', text: `Hi there! So great to match with another T1D member. How are your glucose levels tracking today?` }
+                ];
+            }
+
+            chatLogs[activeChatId].forEach(msg => {
+                const bubble = document.createElement('div');
+                if (msg.sender === 'user') {
+                    bubble.className = "flex justify-end";
+                    bubble.innerHTML = `<div class="bg-rose-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-xs text-sm shadow-sm">${msg.text}</div>`;
+                } else {
+                    bubble.className = "flex justify-start";
+                    bubble.innerHTML = `<div class="bg-white border text-slate-800 px-4 py-2 rounded-2xl rounded-tl-none max-w-xs text-sm shadow-sm">${msg.text}</div>`;
+                }
+                container.appendChild(bubble);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const textInput = document.getElementById('chat-input-text');
+            const txt = textInput.value.trim();
+            if(!txt) return;
+
+            // Push user message
+            chatLogs[activeChatId].push({ sender: 'user', text: txt });
+            textInput.value = "";
+            renderChatMessages();
+            localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
+
+            // Automated friendly reply simulation after 1.5 seconds
+            setTimeout(() => {
+                const replies = [
+                    "That's so relatable! CGM alarms always go off at the worst times haha.",
+                    "Totally understand what you mean. It's nice talking to someone who gets it without explanation.",
+                    "Awesome! Are you using any specific pump model right now?",
+                    "That sounds amazing. Let's keep chatting and plan a virtual coffee chat!"
+                ];
+                const randomReply = replies[Math.floor(Math.random() * replies.length)];
+                chatLogs[activeChatId].push({ sender: 'peer', text: randomReply });
+                renderChatMessages();
+                localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
+            }, 1500);
+        }
+    </script>
 </body>
 </html>
