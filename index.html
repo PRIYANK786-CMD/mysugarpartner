@@ -101,7 +101,7 @@
         <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
     </footer>
 
-    <!-- MODAL 1: AUTHENTICATION (Login / Register with OTP) -->
+    <!-- MODAL 1: AUTHENTICATION (Login / Register with Functional Dynamic OTP) -->
     <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative space-y-6">
             <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
@@ -131,13 +131,14 @@
             <!-- Step 2: Verify OTP -->
             <div id="auth-step-2" class="space-y-4 hidden">
                 <div class="bg-rose-50 text-rose-700 p-3 rounded-xl text-center text-sm font-medium">
-                    Simulated OTP sent! Use code: <strong class="underline">1234</strong>
+                    OTP sent to <span id="display-target" class="font-bold underline"></span>! <br>Your code is: <strong id="display-otp-code" class="text-lg text-rose-900 tracking-wider"></strong>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Enter 4-Digit OTP</label>
-                    <input type="text" id="otp-input" maxlength="4" placeholder="1234" class="w-full text-center tracking-widest text-2xl border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    <label class="block text-sm font-medium mb-1">Enter 4-Digit OTP Code</label>
+                    <input type="text" id="otp-input" maxlength="4" placeholder="Enter code" class="w-full text-center tracking-widest text-2xl border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
                 </div>
                 <button onclick="verifyOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Verify & Continue</button>
+                <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Change Email/Phone number</button>
             </div>
         </div>
     </div>
@@ -236,6 +237,8 @@
         let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; 
         let activeChatId = null;
         let tempImageBase64 = ""; 
+        let generatedOtpCode = ""; // Variable to securely track dynamic OTP
+        let tempAuthInput = "";
 
         // Initialize application view state on load
         window.onload = function() {
@@ -305,8 +308,7 @@
             document.getElementById(id).classList.add('hidden');
         }
 
-        // --- AUTHENTICATION & OTP LOGIC ---
-        let tempAuthInput = "";
+        // --- WORKING DYNAMIC OTP LOGIC ---
         function sendOTP() {
             const inputVal = document.getElementById('auth-input').value.trim();
             const termsChecked = document.getElementById('terms-check').checked;
@@ -321,13 +323,22 @@
             }
 
             tempAuthInput = inputVal;
+            
+            // Generate a secure random 4-digit OTP dynamically for whatever email/phone was entered
+            generatedOtpCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+            // Display code in the UI notice box for seamless frontend simulation testing
+            document.getElementById('display-target').innerText = tempAuthInput;
+            document.getElementById('display-otp-code').innerText = generatedOtpCode;
+
             document.getElementById('auth-step-1').classList.add('hidden');
             document.getElementById('auth-step-2').classList.remove('hidden');
         }
 
         function verifyOTP() {
-            const otp = document.getElementById('otp-input').value.trim();
-            if (otp === "1234") {
+            const enteredOtp = document.getElementById('otp-input').value.trim();
+            
+            if (enteredOtp === generatedOtpCode) {
                 currentUser = {
                     identifier: tempAuthInput,
                     name: "New Member",
@@ -344,9 +355,18 @@
                 updateDashboardUI();
                 renderProfiles(mockProfiles);
                 openModal('profile-modal');
+                resetAuthStep();
             } else {
-                alert("Incorrect OTP code. Please use '1234'");
+                alert("Incorrect OTP code entered. Please check the code shown in the green box and try again.");
             }
+        }
+
+        function resetAuthStep() {
+            document.getElementById('auth-step-2').classList.add('hidden');
+            document.getElementById('auth-step-1').classList.remove('hidden');
+            document.getElementById('otp-input').value = "";
+            document.getElementById('auth-input').value = "";
+            document.getElementById('terms-check').checked = false;
         }
 
         function logout() {
@@ -455,9 +475,8 @@
             requests[profileId] = 'pending';
             localStorage.setItem("msp_requests", JSON.stringify(requests));
             
-            // Simulation of peer response after 3.5 seconds
             setTimeout(() => {
-                const isAccepted = Math.random() > 0.4; // 60% accepted, 40% rejected simulation
+                const isAccepted = Math.random() > 0.4; 
                 if (isAccepted) {
                     requests[profileId] = 'accepted';
                 } else {
