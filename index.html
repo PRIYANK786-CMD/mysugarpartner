@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Sugar Partner - Global T1D Community & Connections</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
@@ -141,7 +142,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: COMPLETE / EDIT PROFILE DETAILS -->
+    <!-- MODAL 2: COMPLETE / EDIT PROFILE DETAILS WITH FILE ATTACHMENT -->
     <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-lg p-8 rounded-3xl shadow-2xl relative space-y-6 my-8">
             <h3 class="text-2xl font-bold">Your Profile Information</h3>
@@ -180,8 +181,11 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Profile Picture URL</label>
-                    <input type="url" id="p-avatar" placeholder="https://images.unsplash.com/..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    <label class="block text-sm font-medium mb-1">Profile Picture (Upload from PC or Mobile)</label>
+                    <div class="flex items-center gap-4">
+                        <img id="preview-avatar" src="" class="w-14 h-14 rounded-full object-cover border-2 border-rose-500 hidden" alt="Preview">
+                        <input type="file" id="p-avatar-file" accept="image/*" class="w-full border rounded-xl p-2.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 outline-none">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Hobbies & T1D Setup (Pump/CGM)</label>
@@ -228,9 +232,10 @@
             { id: 3, name: "Priya Patel", age: 25, gender: "Female", country: "India", goal: "Long-term", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80", hobbies: "Medtronic pump, sketching, reading medical tech blogs." }
         ];
         
-        let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; // Format: { profileId: status ('pending', 'accepted', 'rejected') }
-        let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; // Format: { profileId: [ {sender, text} ] }
+        let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; 
+        let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; 
         let activeChatId = null;
+        let tempImageBase64 = ""; 
 
         // Initialize application view state on load
         window.onload = function() {
@@ -241,6 +246,24 @@
                 checkNotifications();
             } else {
                 switchView('home');
+            }
+
+            // File input listener for image upload
+            const fileInput = document.getElementById('p-avatar-file');
+            if(fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            tempImageBase64 = event.target.result; 
+                            const preview = document.getElementById('preview-avatar');
+                            preview.src = tempImageBase64;
+                            preview.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
             }
         };
 
@@ -265,8 +288,16 @@
                 document.getElementById('p-gender').value = currentUser.gender || 'Female';
                 document.getElementById('p-country').value = currentUser.country || '';
                 document.getElementById('p-goal').value = currentUser.goal || 'Dating';
-                document.getElementById('p-avatar').value = currentUser.avatar || '';
                 document.getElementById('p-hobbies').value = currentUser.hobbies || '';
+                
+                tempImageBase64 = currentUser.avatar || '';
+                const preview = document.getElementById('preview-avatar');
+                if (tempImageBase64) {
+                    preview.src = tempImageBase64;
+                    preview.classList.remove('hidden');
+                } else {
+                    preview.classList.add('hidden');
+                }
             }
         }
 
@@ -297,7 +328,6 @@
         function verifyOTP() {
             const otp = document.getElementById('otp-input').value.trim();
             if (otp === "1234") {
-                // Check if user already exists in local storage profile or create basic record
                 currentUser = {
                     identifier: tempAuthInput,
                     name: "New Member",
@@ -313,8 +343,6 @@
                 switchView('dashboard');
                 updateDashboardUI();
                 renderProfiles(mockProfiles);
-                
-                // Prompt user to update profile details right after first login
                 openModal('profile-modal');
             } else {
                 alert("Incorrect OTP code. Please use '1234'");
@@ -342,8 +370,11 @@
             currentUser.gender = document.getElementById('p-gender').value;
             currentUser.country = document.getElementById('p-country').value;
             currentUser.goal = document.getElementById('p-goal').value;
-            currentUser.avatar = document.getElementById('p-avatar').value;
             currentUser.hobbies = document.getElementById('p-hobbies').value;
+            
+            if (tempImageBase64) {
+                currentUser.avatar = tempImageBase64;
+            }
 
             localStorage.setItem("msp_user", JSON.stringify(currentUser));
             updateDashboardUI();
@@ -385,7 +416,7 @@
             }
 
             profilesArray.forEach(p => {
-                const reqStatus = requests[p.id] || 'none'; // 'none', 'pending', 'accepted', 'rejected'
+                const reqStatus = requests[p.id] || 'none'; 
                 
                 let actionBtnHTML = '';
                 if (reqStatus === 'none') {
@@ -424,10 +455,9 @@
             requests[profileId] = 'pending';
             localStorage.setItem("msp_requests", JSON.stringify(requests));
             
-            // Simulation: Automatically simulate peer response after 4 seconds (either accept or reject randomly to test your features!)
+            // Simulation of peer response after 3.5 seconds
             setTimeout(() => {
-                // Let's alternate or randomly decide response
-                const isAccepted = Math.random() > 0.4; // 60% chance accepted, 40% rejected
+                const isAccepted = Math.random() > 0.4; // 60% accepted, 40% rejected simulation
                 if (isAccepted) {
                     requests[profileId] = 'accepted';
                 } else {
@@ -502,13 +532,11 @@
             const txt = textInput.value.trim();
             if(!txt) return;
 
-            // Push user message
             chatLogs[activeChatId].push({ sender: 'user', text: txt });
             textInput.value = "";
             renderChatMessages();
             localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
 
-            // Automated friendly reply simulation after 1.5 seconds
             setTimeout(() => {
                 const replies = [
                     "That's so relatable! CGM alarms always go off at the worst times haha.",
