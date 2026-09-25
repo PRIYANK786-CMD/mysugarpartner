@@ -3,153 +3,349 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MySugarPartner - Login & Verification</title>
+    <title>MySugarPartner - Smart Diabetes & Health Management</title>
     
     <!-- EmailJS SDK for real email delivery -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
-            // TODO: REPLACE "YOUR_PUBLIC_KEY" with your actual EmailJS Public Key
+            // TODO: Replace "YOUR_PUBLIC_KEY" with your actual EmailJS Public Key
             emailjs.init("YOUR_PUBLIC_KEY");
         })();
     </script>
 
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #10b981;
+            --bg-color: #f8fafc;
+            --text-main: #1e293b;
+            --text-light: #64748b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        header {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .auth-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .auth-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .hero {
+            max-width: 1200px;
+            margin: 4rem auto;
+            padding: 0 2rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto 2rem auto;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
         }
-        .card {
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
             background: white;
-            padding: 30px;
+            padding: 2.5rem;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 350px;
-            text-align: center;
-        }
-        h2 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        input {
             width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .modal h2 {
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e1;
             border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
+            font-size: 1rem;
         }
-        button {
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .submit-btn {
             width: 100%;
-            padding: 12px;
-            background-color: #ff5722;
+            background-color: var(--primary);
             color: white;
             border: none;
+            padding: 0.75rem;
             border-radius: 6px;
-            font-size: 16px;
+            font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 0.5rem;
         }
-        button:hover {
-            background-color: #e64a19;
+
+        .submit-btn:hover {
+            background-color: var(--primary-dark);
         }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
         .hidden {
-            display: none;
+            display: none !important;
         }
-        #message {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #666;
+
+        .status-msg {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            text-align: center;
+            color: var(--text-light);
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>MySugarPartner</h2>
-        
-        <!-- Step 1: Email Input Form -->
-        <div id="email-section">
-            <p>Enter your email to receive a verification code:</p>
-            <input type="email" id="user-email" placeholder="name@example.com" required>
-            <button onclick="sendOTP()">Send Real OTP Code</button>
+    <header>
+        <div class="nav-container">
+            <a href="#" class="logo">MySugarPartner</a>
+            <button class="auth-btn" id="openModalBtn">Login / Sign Up</button>
         </div>
+    </header>
 
-        <!-- Step 2: OTP Verification Form -->
-        <div id="otp-section" class="hidden">
-            <p>Enter the 4-digit code sent to your email:</p>
-            <input type="text" id="user-otp" placeholder="Enter 4-digit code" maxlength="4">
-            <button onclick="verifyOTP()">Verify & Continue</button>
+    <main class="hero">
+        <h1>Take Control of Your Health</h1>
+        <p>Monitor your blood sugar levels, track daily meals, and receive intelligent insights tailored just for you.</p>
+        <button class="auth-btn" style="padding: 0.8rem 2rem; font-size: 1.1rem;" id="heroGetStartedBtn">Get Started Free</button>
+    </main>
+
+    <!-- OTP Auth Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal">
+            <button class="close-btn" id="closeModalBtn">&times;</button>
+            
+            <!-- Step 1: Enter Email -->
+            <div id="emailStep">
+                <h2>Welcome to MySugarPartner</h2>
+                <div class="form-group">
+                    <label for="userEmail">Email Address</label>
+                    <input type="email" id="userEmail" placeholder="name@example.com">
+                </div>
+                <button class="submit-btn" id="sendOtpBtn">Send Real OTP Code</button>
+                <div class="status-msg" id="emailStatus"></div>
+            </div>
+
+            <!-- Step 2: Verify OTP -->
+            <div id="otpStep" class="hidden">
+                <h2>Enter Verification Code</h2>
+                <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.2rem;">We've sent a 4-digit code to your email inbox.</p>
+                <div class="form-group">
+                    <label for="userOtp">4-Digit OTP Code</label>
+                    <input type="text" id="userOtp" maxlength="4" placeholder="1234">
+                </div>
+                <button class="submit-btn" id="verifyOtpBtn">Verify & Continue</button>
+                <div class="status-msg" id="otpStatus"></div>
+            </div>
         </div>
-
-        <div id="message"></div>
     </div>
 
     <script>
-        let generatedOTP = "";
-        let targetEmail = "";
+        const modal = document.getElementById('authModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const heroGetStartedBtn = document.getElementById('heroGetStartedBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        
+        const emailStep = document.getElementById('emailStep');
+        const otpStep = document.getElementById('otpStep');
+        
+        const userEmailInput = document.getElementById('userEmail');
+        const userOtpInput = document.getElementById('userOtp');
+        
+        const sendOtpBtn = document.getElementById('sendOtpBtn');
+        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+        
+        const emailStatus = document.getElementById('emailStatus');
+        const otpStatus = document.getElementById('otpStatus');
 
-        function sendOTP() {
-            targetEmail = document.getElementById("user-email").value.trim();
-            const messageDiv = document.getElementById("message");
+        let generatedOtp = '';
+        let targetEmail = '';
 
-            if (!targetEmail) {
-                messageDiv.style.color = "red";
-                messageDiv.innerText = "Please enter a valid email address.";
+        function toggleModal(show) {
+            if (show) {
+                modal.classList.add('active');
+            } else {
+                modal.classList.remove('active');
+                // Reset states
+                emailStep.classList.remove('hidden');
+                otpStep.classList.add('hidden');
+                userEmailInput.value = '';
+                userOtpInput.value = '';
+                emailStatus.textContent = '';
+                otpStatus.textContent = '';
+            }
+        }
+
+        openModalBtn.addEventListener('click', () => toggleModal(true));
+        heroGetStartedBtn.addEventListener('click', () => toggleModal(true));
+        closeModalBtn.addEventListener('click', () => toggleModal(false));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) toggleModal(false);
+        });
+
+        // 1. Send OTP logic using EmailJS
+        sendOtpBtn.addEventListener('click', () => {
+            targetEmail = userEmailInput.value.trim();
+            if (!targetEmail || !targetEmail.includes('@')) {
+                emailStatus.style.color = 'red';
+                emailStatus.textContent = 'Please enter a valid email address.';
                 return;
             }
 
-            // Generate a random 4-digit OTP code
-            generatedOTP = Math.floor(1000 + Math.random() * 9000).toString();
+            // Generate a random 4-digit code
+            generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+            
+            sendOtpBtn.disabled = true;
+            sendOtpBtn.textContent = 'Sending real email...';
+            emailStatus.style.color = varTextLight = '#64748b';
+            emailStatus.textContent = 'Dispatching secure code to your inbox...';
 
-            messageDiv.style.color = "#666";
-            messageDiv.innerText = "Sending real OTP email...";
-
-            // Parameters to send to your EmailJS template fields
             const templateParams = {
                 to_email: targetEmail,
-                otp_code: generatedOTP,
+                otp_code: generatedOtp,
+                reply_email: targetEmail,
                 name: targetEmail.split('@')[0]
             };
 
-            // Send email using EmailJS service ID and template ID
-            // TODO: REPLACE "YOUR_TEMPLATE_ID" with your actual Template ID from EmailJS
+            // TODO: Ensure 'service_zhxod0f' matches your service ID and replace 'YOUR_TEMPLATE_ID' with your template ID
             emailjs.send('service_zhxod0f', 'YOUR_TEMPLATE_ID', templateParams)
-                .then(function(response) {
+                .then((response) => {
                     console.log('SUCCESS!', response.status, response.text);
-                    messageDiv.style.color = "green";
-                    messageDiv.innerText = "OTP sent successfully to your email!";
+                    emailStatus.textContent = '';
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.textContent = 'Send Real OTP Code';
                     
-                    // Switch UI views to OTP input screen
-                    document.getElementById("email-section").classList.add("hidden");
-                    document.getElementById("otp-section").classList.remove("hidden");
-                }, function(error) {
+                    // Switch to OTP entry step
+                    emailStep.classList.add('hidden');
+                    otpStep.classList.remove('hidden');
+                }, (error) => {
                     console.log('FAILED...', error);
-                    messageDiv.style.color = "red";
-                    messageDiv.innerText = "Failed to send email. Check your EmailJS keys.";
+                    emailStatus.style.color = 'red';
+                    emailStatus.textContent = 'Failed to send email. Check your EmailJS Keys!';
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.textContent = 'Send Real OTP Code';
                 });
-        }
+        });
 
-        function verifyOTP() {
-            const enteredOTP = document.getElementById("user-otp").value.trim();
-            const messageDiv = document.getElementById("message");
-
-            if (enteredOTP === generatedOTP) {
-                messageDiv.style.color = "green";
-                messageDiv.innerText = "Login Successful! Welcome to MySugarPartner.";
-                document.getElementById("otp-section").classList.add("hidden");
+        // 2. Verify OTP logic
+        verifyOtpBtn.addEventListener('click', () => {
+            const enteredOtp = userOtpInput.value.trim();
+            if (enteredOtp === generatedOtp) {
+                otpStatus.style.color = 'green';
+                otpStatus.textContent = 'Success! Logging you in...';
+                setTimeout(() => {
+                    alert('Login successful! Welcome to MySugarPartner dashboard.');
+                    toggleModal(false);
+                }, 1000);
             } else {
-                messageDiv.style.color = "red";
-                messageDiv.innerText = "Incorrect OTP code. Please try again.";
+                otpStatus.style.color = 'red';
+                otpStatus.textContent = 'Incorrect verification code. Please try again.';
             }
-        }
+        });
     </script>
-
 </body>
 </html>
