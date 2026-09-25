@@ -3,349 +3,549 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MySugarPartner - Smart Diabetes & Health Management</title>
-    
+    <title>My Sugar Partner - Global T1D Community & Connections</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <!-- EmailJS SDK for real email delivery -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
-            // TODO: Replace "YOUR_PUBLIC_KEY" with your actual EmailJS Public Key
-            emailjs.init("YOUR_PUBLIC_KEY");
+            // TODO: REPLACE THIS WITH YOUR ACTUAL EMAILJS PUBLIC KEY
+            emailjs.init("YOUR_EMAILJS_PUBLIC_KEY");
         })();
     </script>
-
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --accent: #10b981;
-            --bg-color: #f8fafc;
-            --text-main: #1e293b;
-            --text-light: #64748b;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            line-height: 1.6;
-        }
-
-        header {
-            background: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary);
-            text-decoration: none;
-        }
-
-        .auth-btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .auth-btn:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .hero {
-            max-width: 1200px;
-            margin: 4rem auto;
-            padding: 0 2rem;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: var(--text-main);
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            color: var(--text-light);
-            max-width: 600px;
-            margin: 0 auto 2rem auto;
-        }
-
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .modal {
-            background: white;
-            padding: 2.5rem;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            position: relative;
-        }
-
-        .modal h2 {
-            margin-bottom: 1.5rem;
-            font-size: 1.5rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.2rem;
-            text-align: left;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .submit-btn {
-            width: 100%;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.75rem;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 0.5rem;
-        }
-
-        .submit-btn:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            color: var(--text-light);
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .status-msg {
-            margin-top: 1rem;
-            font-size: 0.9rem;
-            text-align: center;
-            color: var(--text-light);
-        }
-    </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
 
-    <header>
-        <div class="nav-container">
-            <a href="#" class="logo">MySugarPartner</a>
-            <button class="auth-btn" id="openModalBtn">Login / Sign Up</button>
+    <!-- Header / Navigation -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-rose-600 cursor-pointer" onclick="switchView('home')">❤️ MySugarPartner</h1>
+            <div id="nav-actions" class="space-x-4">
+                <button onclick="openModal('auth-modal')" class="bg-rose-600 text-white px-5 py-2 rounded-full hover:bg-rose-700 transition font-medium">Login / Register</button>
+            </div>
         </div>
     </header>
 
-    <main class="hero">
-        <h1>Take Control of Your Health</h1>
-        <p>Monitor your blood sugar levels, track daily meals, and receive intelligent insights tailored just for you.</p>
-        <button class="auth-btn" style="padding: 0.8rem 2rem; font-size: 1.1rem;" id="heroGetStartedBtn">Get Started Free</button>
+    <!-- Main Container Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8">
+
+        <!-- VIEW 1: HOME / LANDING -->
+        <div id="view-home" class="space-y-12">
+            <section class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-20 px-4 text-center rounded-3xl shadow-xl">
+                <div class="max-w-3xl mx-auto">
+                    <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Find Someone Who Truly Understands Your Journey</h2>
+                    <p class="text-lg md:text-xl mb-8 text-rose-100">The global community where Type 1 Diabetics connect safely. Note: This space is designed for dating, exploring live-in arrangements, or companionship first—marriage decisions come later naturally!</p>
+                    <button onclick="openModal('auth-modal')" class="bg-white text-rose-600 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-rose-50 transition">Get Started Now</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- VIEW 2: PROFILE DASHBOARD & SEARCH -->
+        <div id="view-dashboard" class="hidden space-y-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <img id="dash-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" class="w-16 h-16 rounded-full object-cover border-2 border-rose-500" alt="Avatar">
+                    <div>
+                        <h3 id="dash-name" class="text-xl font-bold">User Name</h3>
+                        <p id="dash-email" class="text-sm text-slate-500">user@email.com</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openModal('profile-modal')" class="bg-slate-100 px-4 py-2 rounded-xl text-slate-700 font-medium hover:bg-slate-200 transition">Edit Profile</button>
+                    <button onclick="logout()" class="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl font-medium hover:bg-rose-100 transition">Log Out</button>
+                </div>
+            </div>
+
+            <!-- Filters Section -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Gender Preference</label>
+                    <select id="filter-gender" onchange="filterProfiles()" class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="">All Genders</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Country</label>
+                    <input type="text" id="filter-country" oninput="filterProfiles()" placeholder="Filter by country..." class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Looking For</label>
+                    <select id="filter-goal" onchange="filterProfiles()" class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="">All Intentions</option>
+                        <option value="Long-term">Long-term Relationship</option>
+                        <option value="Short-term">Short-term Relationship</option>
+                        <option value="Dating">Dating & Companionship</option>
+                        <option value="Live-in">Live-in Relationship</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="resetFilters()" class="w-full bg-slate-100 text-slate-600 font-medium py-2.5 rounded-xl hover:bg-slate-200 transition">Reset Filters</button>
+                </div>
+            </div>
+
+            <div id="notifications-box" class="hidden bg-rose-50 border border-rose-200 p-4 rounded-2xl text-rose-800 text-sm flex justify-between items-center">
+                <span id="notification-text">You have pending match requests!</span>
+            </div>
+
+            <div>
+                <h3 class="text-2xl font-bold mb-6">Discover T1D Partners</h3>
+                <div id="profile-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </div>
     </main>
 
-    <!-- OTP Auth Modal -->
-    <div class="modal-overlay" id="authModal">
-        <div class="modal">
-            <button class="close-btn" id="closeModalBtn">&times;</button>
-            
-            <!-- Step 1: Enter Email -->
-            <div id="emailStep">
-                <h2>Welcome to MySugarPartner</h2>
-                <div class="form-group">
-                    <label for="userEmail">Email Address</label>
-                    <input type="email" id="userEmail" placeholder="name@example.com">
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-8 text-center mt-12">
+        <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
+    </footer>
+
+    <!-- MODAL 1: AUTHENTICATION (Real Email OTP via EmailJS) -->
+    <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative space-y-6">
+            <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            <div class="text-center">
+                <h3 class="text-2xl font-bold">Welcome to MySugarPartner</h3>
+                <p class="text-sm text-slate-500 mt-1">Receive a real verification code in your Email</p>
+            </div>
+
+            <!-- Step 1: Input Email -->
+            <div id="auth-step-1" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Your Email Address</label>
+                    <input type="email" id="auth-input" placeholder="e.g. yourname@gmail.com" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
                 </div>
-                <button class="submit-btn" id="sendOtpBtn">Send Real OTP Code</button>
-                <div class="status-msg" id="emailStatus"></div>
+                
+                <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <input type="checkbox" id="terms-check" class="mt-1 w-4 h-4 text-rose-600 rounded">
+                    <label for="terms-check" class="text-xs text-slate-600 leading-relaxed">
+                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Members connect for dating, live-in relationships, or companionship first.
+                    </label>
+                </div>
+
+                <button id="send-btn" onclick="sendRealEmailOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send Real OTP Code</button>
             </div>
 
             <!-- Step 2: Verify OTP -->
-            <div id="otpStep" class="hidden">
-                <h2>Enter Verification Code</h2>
-                <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.2rem;">We've sent a 4-digit code to your email inbox.</p>
-                <div class="form-group">
-                    <label for="userOtp">4-Digit OTP Code</label>
-                    <input type="text" id="userOtp" maxlength="4" placeholder="1234">
+            <div id="auth-step-2" class="space-y-4 hidden">
+                <div class="bg-emerald-50 text-emerald-700 p-3 rounded-xl text-center text-sm font-medium">
+                    Real code dispatched to <span id="display-target" class="font-bold underline"></span>! Check your inbox/spam folder.
                 </div>
-                <button class="submit-btn" id="verifyOtpBtn">Verify & Continue</button>
-                <div class="status-msg" id="otpStatus"></div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Enter 4-Digit OTP Code</label>
+                    <input type="text" id="otp-input" maxlength="4" placeholder="Enter code" class="w-full text-center tracking-widest text-2xl border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <button onclick="verifyRealOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Verify & Continue</button>
+                <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Change Email address</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL 2: COMPLETE / EDIT PROFILE -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-lg p-8 rounded-3xl shadow-2xl relative space-y-6 my-8">
+            <h3 class="text-2xl font-bold">Your Profile Information</h3>
+            <form id="profile-form" onsubmit="saveProfile(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Full Name</label>
+                    <input type="text" id="p-name" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Age</label>
+                        <input type="number" id="p-age" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Gender</label>
+                        <select id="p-gender" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Country / Location</label>
+                        <input type="text" id="p-country" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Looking For</label>
+                        <select id="p-goal" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="Long-term">Long-term Relationship</option>
+                            <option value="Short-term">Short-term Relationship</option>
+                            <option value="Dating">Dating & Companionship</option>
+                            <option value="Live-in">Live-in Relationship</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Profile Picture (Upload from PC/Phone)</label>
+                    <div class="flex items-center gap-4">
+                        <img id="preview-avatar" src="" class="w-14 h-14 rounded-full object-cover border-2 border-rose-500 hidden" alt="Preview">
+                        <input type="file" id="p-avatar-file" accept="image/*" class="w-full border rounded-xl p-2.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Hobbies & T1D Setup</label>
+                    <textarea id="p-hobbies" rows="3" placeholder="Dexcom G7, Omnipod 5, hiking..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Save Profile</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: LIVE CHAT WINDOW -->
+    <div id="chat-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg h-[550px] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
+            <div class="bg-rose-600 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img id="chat-peer-avatar" src="" class="w-10 h-10 rounded-full object-cover border border-white" alt="Peer">
+                    <div>
+                        <h4 id="chat-peer-name" class="font-bold">Chat Partner</h4>
+                        <span class="text-xs text-rose-100">Connected T1D Match</span>
+                    </div>
+                </div>
+                <button onclick="closeModal('chat-modal')" class="text-white hover:text-rose-200 text-xl font-bold">&times;</button>
+            </div>
+            <div id="chat-messages" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-50"></div>
+            <form onsubmit="sendChatMessage(event)" class="p-3 bg-white border-t flex gap-2">
+                <input type="text" id="chat-input-text" placeholder="Type a message..." autocomplete="off" class="flex-grow border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                <button type="submit" class="bg-rose-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-rose-700 transition">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
     <script>
-        const modal = document.getElementById('authModal');
-        const openModalBtn = document.getElementById('openModalBtn');
-        const heroGetStartedBtn = document.getElementById('heroGetStartedBtn');
-        const closeModalBtn = document.getElementById('closeModalBtn');
+        let currentUser = JSON.parse(localStorage.getItem("msp_user")) || null;
+        let mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || [
+            { id: 1, name: "Jessica Taylor", age: 27, gender: "Female", country: "United States", goal: "Dating", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80", hobbies: "Dexcom G7, running, yoga, traveling." },
+            { id: 2, name: "Marcus Vance", age: 31, gender: "Male", country: "Canada", goal: "Live-in", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80", hobbies: "Omnipod user, rock climbing, tech enthusiast." }
+        ];
         
-        const emailStep = document.getElementById('emailStep');
-        const otpStep = document.getElementById('otpStep');
-        
-        const userEmailInput = document.getElementById('userEmail');
-        const userOtpInput = document.getElementById('userOtp');
-        
-        const sendOtpBtn = document.getElementById('sendOtpBtn');
-        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
-        
-        const emailStatus = document.getElementById('emailStatus');
-        const otpStatus = document.getElementById('otpStatus');
+        let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; 
+        let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; 
+        let activeChatId = null;
+        let tempImageBase64 = ""; 
+        let generatedOtpCode = ""; 
+        let tempAuthInput = "";
 
-        let generatedOtp = '';
-        let targetEmail = '';
-
-        function toggleModal(show) {
-            if (show) {
-                modal.classList.add('active');
+        window.onload = function() {
+            if (currentUser) {
+                switchView('dashboard');
+                updateDashboardUI();
+                renderProfiles(mockProfiles);
+                checkNotifications();
             } else {
-                modal.classList.remove('active');
-                // Reset states
-                emailStep.classList.remove('hidden');
-                otpStep.classList.add('hidden');
-                userEmailInput.value = '';
-                userOtpInput.value = '';
-                emailStatus.textContent = '';
-                otpStatus.textContent = '';
+                switchView('home');
+            }
+
+            const fileInput = document.getElementById('p-avatar-file');
+            if(fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            tempImageBase64 = event.target.result; 
+                            const preview = document.getElementById('preview-avatar');
+                            preview.src = tempImageBase64;
+                            preview.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        };
+
+        function switchView(viewName) {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+
+            if (viewName === 'home') {
+                document.getElementById('view-home').classList.remove('hidden');
+                document.getElementById('nav-actions').innerHTML = `<button onclick="openModal('auth-modal')" class="bg-rose-600 text-white px-5 py-2 rounded-full hover:bg-rose-700 transition font-medium">Login / Register</button>`;
+            } else if (viewName === 'dashboard') {
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                document.getElementById('nav-actions').innerHTML = `<button onclick="logout()" class="text-rose-600 font-semibold hover:underline">Log Out</button>`;
             }
         }
 
-        openModalBtn.addEventListener('click', () => toggleModal(true));
-        heroGetStartedBtn.addEventListener('click', () => toggleModal(true));
-        closeModalBtn.addEventListener('click', () => toggleModal(false));
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) toggleModal(false);
-        });
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            if (id === 'profile-modal' && currentUser) {
+                document.getElementById('p-name').value = currentUser.name || '';
+                document.getElementById('p-age').value = currentUser.age || '';
+                document.getElementById('p-gender').value = currentUser.gender || 'Female';
+                document.getElementById('p-country').value = currentUser.country || '';
+                document.getElementById('p-goal').value = currentUser.goal || 'Dating';
+                document.getElementById('p-hobbies').value = currentUser.hobbies || '';
+                
+                tempImageBase64 = currentUser.avatar || '';
+                const preview = document.getElementById('preview-avatar');
+                if (tempImageBase64) {
+                    preview.src = tempImageBase64;
+                    preview.classList.remove('hidden');
+                } else {
+                    preview.classList.add('hidden');
+                }
+            }
+        }
 
-        // 1. Send OTP logic using EmailJS
-        sendOtpBtn.addEventListener('click', () => {
-            targetEmail = userEmailInput.value.trim();
-            if (!targetEmail || !targetEmail.includes('@')) {
-                emailStatus.style.color = 'red';
-                emailStatus.textContent = 'Please enter a valid email address.';
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // --- REAL EMAIL DISPATCH FUNCTION USING EMAILJS ---
+        function sendRealEmailOTP() {
+            const emailVal = document.getElementById('auth-input').value.trim();
+            const termsChecked = document.getElementById('terms-check').checked;
+
+            if (!emailVal || !emailVal.includes('@')) {
+                alert("Please enter a valid email address.");
+                return;
+            }
+            if (!termsChecked) {
+                alert("You must agree to the Terms & Conditions.");
                 return;
             }
 
-            // Generate a random 4-digit code
-            generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-            
-            sendOtpBtn.disabled = true;
-            sendOtpBtn.textContent = 'Sending real email...';
-            emailStatus.style.color = varTextLight = '#64748b';
-            emailStatus.textContent = 'Dispatching secure code to your inbox...';
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.innerText = "Sending Real Email...";
+            sendBtn.disabled = true;
 
+            tempAuthInput = emailVal;
+            generatedOtpCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+            // Parameters sent to your EmailJS template
             const templateParams = {
-                to_email: targetEmail,
-                otp_code: generatedOtp,
-                reply_email: targetEmail,
-                name: targetEmail.split('@')[0]
+                to_email: emailVal,
+                otp_code: generatedOtpCode
             };
 
-            // TODO: Ensure 'service_zhxod0f' matches your service ID and replace 'YOUR_TEMPLATE_ID' with your template ID
-            emailjs.send('service_zhxod0f', 'YOUR_TEMPLATE_ID', templateParams)
-                .then((response) => {
-                    console.log('SUCCESS!', response.status, response.text);
-                    emailStatus.textContent = '';
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.textContent = 'Send Real OTP Code';
-                    
-                    // Switch to OTP entry step
-                    emailStep.classList.add('hidden');
-                    otpStep.classList.remove('hidden');
-                }, (error) => {
-                    console.log('FAILED...', error);
-                    emailStatus.style.color = 'red';
-                    emailStatus.textContent = 'Failed to send email. Check your EmailJS Keys!';
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.textContent = 'Send Real OTP Code';
+            // REPLACE 'YOUR_SERVICE_ID' and 'YOUR_TEMPLATE_ID' with your real EmailJS IDs
+            emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+                .then(function(response) {
+                    sendBtn.innerText = "Send Real OTP Code";
+                    sendBtn.disabled = false;
+                    document.getElementById('display-target').innerText = tempAuthInput;
+                    document.getElementById('auth-step-1').classList.add('hidden');
+                    document.getElementById('auth-step-2').classList.remove('hidden');
+                    alert("Real OTP email sent successfully! Please check your inbox or spam folder.");
+                }, function(error) {
+                    sendBtn.innerText = "Send Real OTP Code";
+                    sendBtn.disabled = false;
+                    alert("Failed to send email. Please verify your EmailJS Public Key, Service ID, and Template ID configuration.\nError: " + JSON.stringify(error));
                 });
-        });
+        }
 
-        // 2. Verify OTP logic
-        verifyOtpBtn.addEventListener('click', () => {
-            const enteredOtp = userOtpInput.value.trim();
-            if (enteredOtp === generatedOtp) {
-                otpStatus.style.color = 'green';
-                otpStatus.textContent = 'Success! Logging you in...';
-                setTimeout(() => {
-                    alert('Login successful! Welcome to MySugarPartner dashboard.');
-                    toggleModal(false);
-                }, 1000);
+        function verifyRealOTP() {
+            const enteredOtp = document.getElementById('otp-input').value.trim();
+            
+            if (enteredOtp === generatedOtpCode) {
+                currentUser = {
+                    identifier: tempAuthInput,
+                    name: "New Member",
+                    age: 25,
+                    gender: "Female",
+                    country: "Global",
+                    goal: "Dating",
+                    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80",
+                    hobbies: "Type 1 Diabetic warrior looking to connect!"
+                };
+                localStorage.setItem("msp_user", JSON.stringify(currentUser));
+                closeModal('auth-modal');
+                switchView('dashboard');
+                updateDashboardUI();
+                renderProfiles(mockProfiles);
+                openModal('profile-modal');
+                resetAuthStep();
             } else {
-                otpStatus.style.color = 'red';
-                otpStatus.textContent = 'Incorrect verification code. Please try again.';
+                alert("Incorrect OTP code entered. Please check the code sent to your email.");
             }
-        });
+        }
+
+        function resetAuthStep() {
+            document.getElementById('auth-step-2').classList.add('hidden');
+            document.getElementById('auth-step-1').classList.remove('hidden');
+            document.getElementById('otp-input').value = "";
+            document.getElementById('auth-input').value = "";
+            document.getElementById('terms-check').checked = false;
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem("msp_user");
+            switchView('home');
+        }
+
+        function updateDashboardUI() {
+            if (!currentUser) return;
+            document.getElementById('dash-name').innerText = currentUser.name;
+            document.getElementById('dash-email').innerText = currentUser.identifier;
+            document.getElementById('dash-avatar').src = currentUser.avatar;
+        }
+
+        function saveProfile(e) {
+            e.preventDefault();
+            currentUser.name = document.getElementById('p-name').value;
+            currentUser.age = document.getElementById('p-age').value;
+            currentUser.gender = document.getElementById('p-gender').value;
+            currentUser.country = document.getElementById('p-country').value;
+            currentUser.goal = document.getElementById('p-goal').value;
+            currentUser.hobbies = document.getElementById('p-hobbies').value;
+            
+            if (tempImageBase64) currentUser.avatar = tempImageBase64;
+
+            localStorage.setItem("msp_user", JSON.stringify(currentUser));
+            updateDashboardUI();
+            closeModal('profile-modal');
+            alert("Profile successfully updated!");
+        }
+
+        function filterProfiles() {
+            const genderVal = document.getElementById('filter-gender').value.toLowerCase();
+            const countryVal = document.getElementById('filter-country').value.toLowerCase();
+            const goalVal = document.getElementById('filter-goal').value.toLowerCase();
+
+            const filtered = mockProfiles.filter(p => {
+                const matchGender = genderVal ? p.gender.toLowerCase() === genderVal : true;
+                const matchCountry = countryVal ? p.country.toLowerCase().includes(countryVal) : true;
+                const matchGoal = goalVal ? p.goal.toLowerCase().includes(goalVal) : true;
+                return matchGender && matchCountry && matchGoal;
+            });
+            renderProfiles(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-gender').value = "";
+            document.getElementById('filter-country').value = "";
+            document.getElementById('filter-goal').value = "";
+            renderProfiles(mockProfiles);
+        }
+
+        function renderProfiles(profilesArray) {
+            const grid = document.getElementById('profile-grid');
+            grid.innerHTML = "";
+
+            if (profilesArray.length === 0) {
+                grid.innerHTML = `<p class="text-slate-500 col-span-full text-center py-8">No profiles found matching your search filters.</p>`;
+                return;
+            }
+
+            profilesArray.forEach(p => {
+                const reqStatus = requests[p.id] || 'none'; 
+                let actionBtnHTML = '';
+                if (reqStatus === 'none') {
+                    actionBtnHTML = `<button onclick="sendRequest(${p.id})" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Send Request ❤️</button>`;
+                } else if (reqStatus === 'pending') {
+                    actionBtnHTML = `<button disabled class="w-full bg-amber-50 text-amber-600 font-medium py-2.5 rounded-xl cursor-not-allowed">Request Pending ⏳</button>`;
+                } else if (reqStatus === 'rejected') {
+                    actionBtnHTML = `<button onclick="sendRequest(${p.id})" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Request Rejected. Try Again?</button>`;
+                } else if (reqStatus === 'accepted') {
+                    actionBtnHTML = `<button onclick="openChat(${p.id})" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm">Open Live Chat 💬</button>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4 hover:shadow-md transition";
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <img src="${p.avatar}" class="w-16 h-16 rounded-full object-cover border" alt="Profile">
+                        <div>
+                            <h4 class="text-lg font-bold">${p.name}, ${p.age}</h4>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-semibold">${p.country}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-rose-600 uppercase tracking-wider">Goal: ${p.goal}</span>
+                        <p class="text-slate-600 text-sm mt-1">${p.hobbies}</p>
+                    </div>
+                    <div class="pt-2">${actionBtnHTML}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function sendRequest(profileId) {
+            requests[profileId] = 'pending';
+            localStorage.setItem("msp_requests", JSON.stringify(requests));
+            setTimeout(() => {
+                requests[profileId] = Math.random() > 0.4 ? 'accepted' : 'rejected';
+                localStorage.setItem("msp_requests", JSON.stringify(requests));
+                renderProfiles(mockProfiles);
+                checkNotifications();
+            }, 3500);
+            renderProfiles(mockProfiles);
+            alert("Connection request sent successfully!");
+        }
+
+        function checkNotifications() {
+            const notificationBox = document.getElementById('notifications-box');
+            const notificationText = document.getElementById('notification-text');
+            let hasRejected = Object.values(requests).includes('rejected');
+            let hasAccepted = Object.values(requests).includes('accepted');
+
+            if (hasRejected) {
+                notificationBox.classList.remove('hidden');
+                notificationText.innerHTML = `⚠️ One of your match requests was declined.`;
+            } else if (hasAccepted) {
+                notificationBox.classList.remove('hidden');
+                notificationText.innerHTML = `🎉 Great news! A connection request has been accepted. You can now chat directly!`;
+            } else {
+                notificationBox.classList.add('hidden');
+            }
+        }
+
+        function openChat(profileId) {
+            activeChatId = profileId;
+            const peer = mockProfiles.find(p => p.id === profileId);
+            document.getElementById('chat-peer-name').innerText = peer.name;
+            document.getElementById('chat-peer-avatar').src = peer.avatar;
+            renderChatMessages();
+            openModal('chat-modal');
+        }
+
+        function renderChatMessages() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = "";
+            if (!chatLogs[activeChatId]) {
+                chatLogs[activeChatId] = [{ sender: 'peer', text: `Hi there! So great to match with another T1D member.` }];
+            }
+            chatLogs[activeChatId].forEach(msg => {
+                const bubble = document.createElement('div');
+                if (msg.sender === 'user') {
+                    bubble.className = "flex justify-end";
+                    bubble.innerHTML = `<div class="bg-rose-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-xs text-sm shadow-sm">${msg.text}</div>`;
+                } else {
+                    bubble.className = "flex justify-start";
+                    bubble.innerHTML = `<div class="bg-white border text-slate-800 px-4 py-2 rounded-2xl rounded-tl-none max-w-xs text-sm shadow-sm">${msg.text}</div>`;
+                }
+                container.appendChild(bubble);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const textInput = document.getElementById('chat-input-text');
+            const txt = textInput.value.trim();
+            if(!txt) return;
+
+            chatLogs[activeChatId].push({ sender: 'user', text: txt });
+            textInput.value = "";
+            renderChatMessages();
+            localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
+
+            setTimeout(() => {
+                chatLogs[activeChatId].push({ sender: 'peer', text: "That's so relatable! CGM alarms always go off at the worst times." });
+                renderChatMessages();
+                localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
+            }, 1500);
+        }
     </script>
 </body>
 </html>
