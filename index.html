@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Sugar Partner - Global T1D Dating & Community</title>
+    <!-- Tailwind CSS for rapid, beautiful UI design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+    <!-- Header / Navigation -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-rose-600">❤️ MySugarPartner</h1>
+            <nav class="space-x-6 hidden md:block">
+                <a href="#features" class="hover:text-rose-600 font-medium">Why Us</a>
+                <a href="#profiles" class="hover:text-rose-600 font-medium">Find Partners</a>
+                <a href="#join" class="bg-rose-600 text-white px-4 py-2 rounded-full hover:bg-rose-700 transition">Create Profile</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-20 px-4 text-center">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Find Someone Who Truly Understands Your Journey</h2>
+            <p class="text-lg md:text-xl mb-8 text-rose-100">The safe, global community where Type 1 Diabetics connect, share, and find lasting love with people who get the CGM beeps and carb counting.</p>
+            <a href="#join" class="bg-white text-rose-600 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-rose-50 transition">Get Started Free</a>
+        </div>
+    </section>
+
+    <!-- Featured Profiles Section -->
+    <section id="profiles" class="py-16 max-w-7xl mx-auto px-4">
+        <h3 class="text-3xl font-bold text-center mb-12">Meet Our Community Members</h3>
+        <div id="profile-grid" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Dynamic profiles will load here via JavaScript -->
+        </div>
+    </section>
+
+    <!-- Join / Registration Section -->
+    <section id="join" class="bg-white py-16 border-t border-slate-200">
+        <div class="max-w-xl mx-auto px-4">
+            <h3 class="text-3xl font-bold text-center mb-6">Create Your Profile</h3>
+            <form id="signup-form" class="space-y-4 bg-slate-50 p-6 rounded-xl shadow-sm border border-slate-200">
+                <div>
+                    <label class="block font-medium mb-1">Your Name / Alias</label>
+                    <input type="text" id="name" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-medium mb-1">Age</label>
+                        <input type="number" id="age" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-medium mb-1">Country</label>
+                        <input type="text" id="country" required class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium mb-1">Short Bio & Pump/CGM Setup</label>
+                    <textarea id="bio" rows="3" required placeholder="Diagnosed in 2015, use Omnipod & Dexcom..." class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-rose-500 outline-none"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-lg hover:bg-rose-700 transition">Publish Profile</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-8 text-center">
+        <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
