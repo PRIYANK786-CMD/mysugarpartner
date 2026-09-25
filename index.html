@@ -10,8 +10,8 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
-            // TODO: REPLACE THIS WITH YOUR ACTUAL EMAILJS PUBLIC KEY
-            emailjs.init("YOUR_EMAILJS_PUBLIC_KEY");
+            // Initialized with your actual EmailJS Public Key
+            emailjs.init("Ctf7ZIwha2vLL2ps1");
         })();
     </script>
 </head>
@@ -321,14 +321,13 @@
             tempAuthInput = emailVal;
             generatedOtpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-            // Parameters sent to your EmailJS template
             const templateParams = {
                 to_email: emailVal,
                 otp_code: generatedOtpCode
             };
 
-            // REPLACE 'YOUR_SERVICE_ID' and 'YOUR_TEMPLATE_ID' with your real EmailJS IDs
-            emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+            // Using your exact Service ID and Template ID
+            emailjs.send('service_zhxod0f', 'template_bvk6gvn', templateParams)
                 .then(function(response) {
                     sendBtn.innerText = "Send Real OTP Code";
                     sendBtn.disabled = false;
@@ -339,7 +338,7 @@
                 }, function(error) {
                     sendBtn.innerText = "Send Real OTP Code";
                     sendBtn.disabled = false;
-                    alert("Failed to send email. Please verify your EmailJS Public Key, Service ID, and Template ID configuration.\nError: " + JSON.stringify(error));
+                    alert("Failed to send email. Error: " + JSON.stringify(error));
                 });
         }
 
