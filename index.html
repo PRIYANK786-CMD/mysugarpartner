@@ -50,7 +50,7 @@
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <button onclick="openGlobalChatRoom()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition shadow-sm">🌍 Global Live Chat Room</button>
-                    <button onclick="openModal('profile-modal')" class="bg-slate-100 px-4 py-2 rounded-xl text-slate-700 font-medium hover:bg-slate-200 transition">Edit Profile</button>
+                    <button onclick="openModal('profile-modal')" class="bg-slate-100 px-4 py-2 rounded-xl text-slate-700 font-medium hover:bg-slate-200 transition">Edit Profile & Password</button>
                     <button onclick="deleteAccount()" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-medium hover:bg-red-100 transition">Delete Profile</button>
                     <button onclick="logout()" class="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl font-medium hover:bg-rose-100 transition">Log Out</button>
                 </div>
@@ -174,7 +174,11 @@
     <!-- MODAL 2: PROFILE MODAL -->
     <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-lg p-8 rounded-3xl shadow-2xl relative space-y-6 my-8">
-            <h3 class="text-2xl font-bold">Your Profile Information</h3>
+            <div class="flex justify-between items-center">
+                <h3 class="text-2xl font-bold">Edit Profile & Password</h3>
+                <button onclick="closeModal('profile-modal')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+            
             <form id="profile-form" onsubmit="saveProfile(event)" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Full Name</label>
@@ -220,7 +224,17 @@
                     <label class="block text-sm font-medium mb-1">Hobbies & T1D Setup</label>
                     <textarea id="p-hobbies" rows="3" placeholder="Dexcom G7, Omnipod 5..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
                 </div>
-                <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Save Profile</button>
+
+                <!-- Change Password Section inside Edit Profile -->
+                <div class="border-t pt-4 mt-4 space-y-3">
+                    <h4 class="font-bold text-slate-700 text-sm">🔐 Change Password (Optional)</h4>
+                    <div>
+                        <label class="block text-xs font-medium mb-1 text-slate-600">New Password (leave blank to keep current)</label>
+                        <input type="password" id="p-new-pass" placeholder="••••••••" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500 text-sm">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Save Profile & Changes</button>
             </form>
         </div>
     </div>
@@ -349,6 +363,12 @@
             }
 
             if (currentUser) {
+                registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
+                if (registeredUsersRegistry[currentUser.email]) {
+                    currentUser = registeredUsersRegistry[currentUser.email];
+                    sessionStorage.setItem("msp_user", JSON.stringify(currentUser));
+                }
+
                 switchView('dashboard');
                 updateDashboardUI();
                 renderProfiles(mockProfiles);
@@ -444,6 +464,7 @@
                 document.getElementById('p-country').value = currentUser.country || 'United States';
                 document.getElementById('p-goal').value = currentUser.goal || 'Dating';
                 document.getElementById('p-hobbies').value = currentUser.hobbies || '';
+                document.getElementById('p-new-pass').value = ''; // clear password input field on open
                 
                 tempImageBase64 = currentUser.avatar || '';
                 const preview = document.getElementById('preview-avatar');
@@ -460,7 +481,6 @@
             document.getElementById(id).classList.add('hidden');
         }
 
-        // Direct Login with email and password without mail verification
         function handleDirectLogin() {
             const email = document.getElementById('login-email').value.trim().toLowerCase();
             const pass = document.getElementById('login-pass').value;
@@ -519,7 +539,6 @@
             sendBtn.innerText = "Sending Verification Email...";
             sendBtn.disabled = true;
 
-            // Save password temporarily in sessionStorage so it persists across the email link redirect page reload
             sessionStorage.setItem("temp_reg_pass", passVal);
 
             const currentBaseUrl = window.location.href.split('?')[0];
@@ -622,6 +641,7 @@
             e.preventDefault();
             if (!currentUser) return;
 
+            // Update standard profile fields
             currentUser.name = document.getElementById('p-name').value;
             currentUser.age = document.getElementById('p-age').value;
             currentUser.gender = document.getElementById('p-gender').value;
@@ -629,8 +649,21 @@
             currentUser.goal = document.getElementById('p-goal').value;
             currentUser.hobbies = document.getElementById('p-hobbies').value;
             
-            if (tempImageBase64) currentUser.avatar = tempImageBase64;
+            if (tempImageBase64) {
+                currentUser.avatar = tempImageBase64;
+            }
 
+            // Check if user entered a new password
+            const newPasswordInput = document.getElementById('p-new-pass').value;
+            if (newPasswordInput.trim() !== "") {
+                if (newPasswordInput.length < 4) {
+                    alert("New password must be at least 4 characters long.");
+                    return;
+                }
+                currentUser.password = newPasswordInput;
+            }
+
+            // Save updates back to registries and session
             registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
             registeredUsersRegistry[currentUser.email] = currentUser;
 
@@ -653,7 +686,7 @@
             updateDashboardUI();
             renderProfiles(mockProfiles);
             closeModal('profile-modal');
-            alert("Profile successfully saved and published!");
+            alert("Profile and password successfully updated!");
         }
 
         function filterProfiles() {
@@ -677,7 +710,6 @@
             renderProfiles(mockProfiles);
         }
 
-        // --- TRUE CONNECTION REQUEST SYSTEM ---
         function getPairKey(email1, email2) {
             return [email1, email2].sort().join("_");
         }
@@ -794,7 +826,6 @@
             });
         }
 
-        // --- DIRECT CHAT WITH ACCEPTED PEER ---
         function openChat(peerEmail) {
             activeChatEmail = peerEmail;
             const peer = mockProfiles.find(p => p.email === peerEmail);
@@ -844,7 +875,6 @@
             renderChatMessages();
         }
 
-        // --- GLOBAL LIVE CHAT ROOM ---
         function openGlobalChatRoom() {
             globalChatLogs = JSON.parse(localStorage.getItem("msp_global_chat")) || globalChatLogs;
             renderGlobalChatMessages();
