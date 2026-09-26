@@ -6,7 +6,7 @@
     <title>My Sugar Partner - Global T1D Community & Connections</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- EmailJS SDK for email verification link simulation -->
+    <!-- EmailJS SDK -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
@@ -106,7 +106,7 @@
         <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
     </footer>
 
-    <!-- MODAL 1: AUTHENTICATION (Email Link Verification Simulation) -->
+    <!-- MODAL 1: AUTHENTICATION -->
     <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative space-y-6">
             <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
@@ -135,11 +135,10 @@
             <!-- Step 2: Awaiting Click -->
             <div id="auth-step-2" class="space-y-4 hidden text-center">
                 <div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium space-y-2">
-                    <p>Verification link dispatched to <span id="display-target" class="font-bold underline"></span>!</p>
-                    <p class="text-xs text-emerald-600">Please open your email inbox, click the verification link sent to you, and then click below to complete your login.</p>
+                    <p>Verification email dispatched to <span id="display-target" class="font-bold underline"></span>!</p>
+                    <p class="text-xs text-emerald-600">Please open your email inbox and click the <b>YES</b> option button inside the email to complete your registration.</p>
                 </div>
-                <button onclick="simulateEmailLinkConfirmation()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition shadow-sm">I Have Clicked My Email Link ✅</button>
-                <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Change Email address</button>
+                <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Use a different email address</button>
             </div>
         </div>
     </div>
@@ -170,9 +169,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-1">Country / Location</label>
-                        <select id="p-country" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
-                            <!-- Populated dynamically via JS -->
-                        </select>
+                        <select id="p-country" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500"></select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Looking For</label>
@@ -247,30 +244,19 @@
             "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
             "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
             "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic",
-            "Denmark", "Djibouti", "Dominica", "Dominican Republic",
-            "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
-            "Fiji", "Finland", "France",
-            "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
-            "Haiti", "Honduras", "Hungary",
-            "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
-            "Jamaica", "Japan", "Jordan",
-            "Kazakhstan", "Kenya", "Kiribati", "Korea, North", "Korea, South", "Kosovo", "Kuwait", "Kyrgyzstan",
-            "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+            "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+            "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
+            "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan",
+            "Kazakhstan", "Kenya", "Kiribati", "Korea, North", "Korea, South", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
             "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
-            "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Macedonia", "Norway",
-            "Oman",
-            "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
-            "Qatar",
-            "Romania", "Russia", "Rwanda",
-            "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
+            "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Macedonia", "Norway", "Oman",
+            "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar",
+            "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
             "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
-            "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-            "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
-            "Yemen",
-            "Zambia", "Zimbabwe"
+            "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
         ];
 
-        let registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {}; // Maps email -> profile details
+        let registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
         let currentUser = JSON.parse(localStorage.getItem("msp_user")) || null;
         let mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || [
             { id: 1, email: "jessica@example.com", name: "Jessica Taylor", age: 27, gender: "Female", country: "United States", goal: "Dating", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80", hobbies: "Dexcom G7, running, yoga, traveling." },
@@ -280,7 +266,7 @@
         let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; 
         let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; 
         let globalChatLogs = JSON.parse(localStorage.getItem("msp_global_chat")) || [
-            { senderName: "Global System", text: "Welcome to the Global T1D Live Chat Room! Say hello to everyone." }
+            { senderName: "Global System", text: "Welcome to the Global T1D Community Live Chat Room! Say hello to everyone." }
         ];
 
         let activeChatId = null;
@@ -289,6 +275,21 @@
 
         window.onload = function() {
             populateCountries();
+
+            // Check URL query parameters for Yes/No email verification click handler
+            const urlParams = new URLSearchParams(window.location.search);
+            const verifyAction = urlParams.get('verify');
+            const verifyEmail = urlParams.get('email');
+
+            if (verifyAction && verifyEmail) {
+                if (verifyAction === 'yes') {
+                    handleSuccessfulVerification(verifyEmail);
+                } else if (verifyAction === 'no') {
+                    alert("Registration was rejected as requested from your email.");
+                    window.location.href = window.location.pathname; // Clear URL
+                }
+            }
+
             if (currentUser) {
                 switchView('dashboard');
                 updateDashboardUI();
@@ -298,6 +299,7 @@
                 switchView('home');
             }
 
+            // Image compressor file reader to prevent localStorage crash
             const fileInput = document.getElementById('p-avatar-file');
             if(fileInput) {
                 fileInput.addEventListener('change', function(e) {
@@ -305,10 +307,36 @@
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = function(event) {
-                            tempImageBase64 = event.target.result; 
-                            const preview = document.getElementById('preview-avatar');
-                            preview.src = tempImageBase64;
-                            preview.classList.remove('hidden');
+                            const img = new Image();
+                            img.onload = function() {
+                                const canvas = document.createElement('canvas');
+                                const MAX_WIDTH = 300;
+                                const MAX_HEIGHT = 300;
+                                let width = img.width;
+                                let height = img.height;
+
+                                if (width > height) {
+                                    if (width > MAX_WIDTH) {
+                                        height *= MAX_WIDTH / width;
+                                        width = MAX_WIDTH;
+                                    }
+                                } else {
+                                    if (height > MAX_HEIGHT) {
+                                        width *= MAX_HEIGHT / height;
+                                        height = MAX_HEIGHT;
+                                    }
+                                }
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, width, height);
+                                tempImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+
+                                const preview = document.getElementById('preview-avatar');
+                                preview.src = tempImageBase64;
+                                preview.classList.remove('hidden');
+                            };
+                            img.src = event.target.result;
                         };
                         reader.readAsDataURL(file);
                     }
@@ -364,7 +392,7 @@
             document.getElementById(id).classList.add('hidden');
         }
 
-        // --- FEATURE 1 & 2: EMAIL LINK VERIFICATION & SINGLE PERSON PER EMAIL ---
+        // --- EMAIL LINK YES / NO VERIFICATION FLOW ---
         function sendVerificationEmailLink() {
             const emailVal = document.getElementById('auth-input').value.trim();
             const termsChecked = document.getElementById('terms-check').checked;
@@ -379,17 +407,22 @@
             }
 
             const sendBtn = document.getElementById('send-btn');
-            sendBtn.innerText = "Sending Verification Link...";
+            sendBtn.innerText = "Sending Verification Email...";
             sendBtn.disabled = true;
 
             tempAuthInput = emailVal;
 
+            const currentBaseUrl = window.location.href.split('?')[0];
+            const yesLink = `${currentBaseUrl}?verify=yes&email=${encodeURIComponent(emailVal)}`;
+            const noLink = `${currentBaseUrl}?verify=no&email=${encodeURIComponent(emailVal)}`;
+
             const templateParams = {
                 to_email: emailVal,
-                otp_code: "CLICK_VERIFY_LINK_ACTIVATED"
+                yes_link: yesLink,
+                no_link: noLink,
+                otp_code: "CLICK YES OR NO BELOW TO VERIFY"
             };
 
-            // Sends real email notification via EmailJS
             emailjs.send('service_zhxod0f', 'template_bvk6gvn', templateParams)
                 .then(function(response) {
                     sendBtn.innerText = "Send Verification Link";
@@ -400,23 +433,19 @@
                 }, function(error) {
                     sendBtn.innerText = "Send Verification Link";
                     sendBtn.disabled = false;
-                    // Fallback simulation if service limits hit
                     document.getElementById('display-target').innerText = tempAuthInput;
                     document.getElementById('auth-step-1').classList.add('hidden');
                     document.getElementById('auth-step-2').classList.remove('hidden');
                 });
         }
 
-        function simulateEmailLinkConfirmation() {
-            // Enforce One Account Per Email
-            if (registeredUsersRegistry[tempAuthInput]) {
-                // Log existing user in
-                currentUser = registeredUsersRegistry[tempAuthInput];
+        function handleSuccessfulVerification(emailVal) {
+            if (registeredUsersRegistry[emailVal]) {
+                currentUser = registeredUsersRegistry[emailVal];
             } else {
-                // Create brand new profile bound to this unique email
                 currentUser = {
                     id: Date.now(),
-                    email: tempAuthInput,
+                    email: emailVal,
                     name: "New Member",
                     age: 25,
                     gender: "Female",
@@ -425,19 +454,15 @@
                     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80",
                     hobbies: "Type 1 Diabetic warrior looking to connect!"
                 };
-                registeredUsersRegistry[tempAuthInput] = currentUser;
+                registeredUsersRegistry[emailVal] = currentUser;
                 localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
                 mockProfiles.unshift(currentUser);
                 localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
             }
 
             localStorage.setItem("msp_user", JSON.stringify(currentUser));
-            closeModal('auth-modal');
-            switchView('dashboard');
-            updateDashboardUI();
-            renderProfiles(mockProfiles);
-            openModal('profile-modal');
-            resetAuthStep();
+            alert("Email Verified Successfully via YES option!");
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
 
         function resetAuthStep() {
@@ -453,10 +478,8 @@
             switchView('home');
         }
 
-        // --- FEATURE 3: DELETE PROFILE ---
         function deleteAccount() {
-            if (confirm("Are you sure you want to permanently delete your profile and leave the community? This cannot be undone.")) {
-                // Remove from registry and mock profiles array
+            if (confirm("Are you sure you want to permanently delete your profile and leave the community?")) {
                 if (currentUser) {
                     delete registeredUsersRegistry[currentUser.email];
                     localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
@@ -476,9 +499,11 @@
             document.getElementById('dash-avatar').src = currentUser.avatar;
         }
 
-        // --- FEATURE 4: EDIT PROFILE DETAILS & PICTURE ---
+        // --- FIXED SAVE PROFILE (SAFE FROM STORAGE QUOTA CRASH) ---
         function saveProfile(e) {
             e.preventDefault();
+            if (!currentUser) return;
+
             currentUser.name = document.getElementById('p-name').value;
             currentUser.age = document.getElementById('p-age').value;
             currentUser.gender = document.getElementById('p-gender').value;
@@ -486,11 +511,11 @@
             currentUser.goal = document.getElementById('p-goal').value;
             currentUser.hobbies = document.getElementById('p-hobbies').value;
             
-            if (tempImageBase64) currentUser.avatar = tempImageBase64;
+            if (tempImageBase64) {
+                currentUser.avatar = tempImageBase64;
+            }
 
-            // Update in registry and profiles list
             registeredUsersRegistry[currentUser.email] = currentUser;
-            localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
 
             const index = mockProfiles.findIndex(p => p.email === currentUser.email || p.id === currentUser.id);
             if (index !== -1) {
@@ -498,13 +523,21 @@
             } else {
                 mockProfiles.unshift(currentUser);
             }
-            localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
 
-            localStorage.setItem("msp_user", JSON.stringify(currentUser));
+            // Safe localStorage saving wrapped in try-catch to catch quota errors
+            try {
+                localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
+                localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
+                localStorage.setItem("msp_user", JSON.stringify(currentUser));
+            } catch (err) {
+                alert("Storage error: The uploaded picture is still too large. Please select a smaller image file.");
+                return;
+            }
+
             updateDashboardUI();
             renderProfiles(mockProfiles);
             closeModal('profile-modal');
-            alert("Profile successfully updated!");
+            alert("Profile successfully saved and published!");
         }
 
         function filterProfiles() {
@@ -538,7 +571,7 @@
             }
 
             profilesArray.forEach(p => {
-                if (currentUser && p.email === currentUser.email) return; // Don't show own card in search grid
+                if (currentUser && p.email === currentUser.email) return;
 
                 const reqStatus = requests[p.id || p.email] || 'none'; 
                 let actionBtnHTML = '';
@@ -649,7 +682,6 @@
             }, 1500);
         }
 
-        // --- FEATURE 6: GLOBAL LIVE CHAT ROOM ---
         function openGlobalChatRoom() {
             renderGlobalChatMessages();
             openModal('global-chat-modal');
