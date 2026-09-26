@@ -464,7 +464,7 @@
                 document.getElementById('p-country').value = currentUser.country || 'United States';
                 document.getElementById('p-goal').value = currentUser.goal || 'Dating';
                 document.getElementById('p-hobbies').value = currentUser.hobbies || '';
-                document.getElementById('p-new-pass').value = ''; // clear password input field on open
+                document.getElementById('p-new-pass').value = ''; 
                 
                 tempImageBase64 = currentUser.avatar || '';
                 const preview = document.getElementById('preview-avatar');
@@ -616,17 +616,19 @@
         }
 
         function deleteAccount() {
-            if (confirm("Are you sure you want to permanently delete your profile?")) {
+            if (confirm("Are you sure you want to permanently delete your profile? This will free up your email address for future registrations.")) {
                 if (currentUser) {
+                    // Remove user from the authentication registry so the email can be re-registered
                     registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
                     delete registeredUsersRegistry[currentUser.email];
                     localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
 
+                    // Remove user from public mock profiles list
                     mockProfiles = mockProfiles.filter(p => p.email !== currentUser.email);
                     localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
                 }
                 logout();
-                alert("Your profile has been successfully deleted.");
+                alert("Your profile has been successfully deleted, and your email is now available for new registration.");
             }
         }
 
@@ -641,7 +643,6 @@
             e.preventDefault();
             if (!currentUser) return;
 
-            // Update standard profile fields
             currentUser.name = document.getElementById('p-name').value;
             currentUser.age = document.getElementById('p-age').value;
             currentUser.gender = document.getElementById('p-gender').value;
@@ -653,7 +654,6 @@
                 currentUser.avatar = tempImageBase64;
             }
 
-            // Check if user entered a new password
             const newPasswordInput = document.getElementById('p-new-pass').value;
             if (newPasswordInput.trim() !== "") {
                 if (newPasswordInput.length < 4) {
@@ -663,7 +663,6 @@
                 currentUser.password = newPasswordInput;
             }
 
-            // Save updates back to registries and session
             registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
             registeredUsersRegistry[currentUser.email] = currentUser;
 
