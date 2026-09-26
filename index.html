@@ -106,38 +106,68 @@
         <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
     </footer>
 
-    <!-- MODAL 1: AUTHENTICATION -->
+    <!-- MODAL 1: AUTHENTICATION (LOGIN / REGISTER) -->
     <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative space-y-6">
             <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            <div class="text-center">
-                <h3 class="text-2xl font-bold">Welcome to MySugarPartner</h3>
-                <p class="text-sm text-slate-500 mt-1">Sign in or register with your unique email</p>
+            
+            <!-- Tab Switcher -->
+            <div class="flex border-b border-slate-200 pb-2">
+                <button onclick="switchAuthTab('login')" id="tab-login-btn" class="flex-1 pb-2 font-bold text-rose-600 border-b-2 border-rose-600 text-center transition">Direct Login</button>
+                <button onclick="switchAuthTab('register')" id="tab-reg-btn" class="flex-1 pb-2 font-semibold text-slate-400 text-center transition">New Registration</button>
             </div>
 
-            <div id="auth-step-1" class="space-y-4">
+            <!-- LOGIN VIEW -->
+            <div id="auth-login-section" class="space-y-4">
+                <div class="text-center">
+                    <h3 class="text-xl font-bold">Welcome Back</h3>
+                    <p class="text-xs text-slate-500 mt-1">Sign in instantly with your email & password</p>
+                </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Your Unique Email Address</label>
-                    <input type="email" id="auth-input" placeholder="e.g. yourname@gmail.com" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    <label class="block text-sm font-medium mb-1">Email Address</label>
+                    <input type="email" id="login-email" placeholder="yourname@gmail.com" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
                 </div>
-                
-                <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <input type="checkbox" id="terms-check" class="mt-1 w-4 h-4 text-rose-600 rounded">
-                    <label for="terms-check" class="text-xs text-slate-600 leading-relaxed">
-                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Only one profile per email.
-                    </label>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="login-pass" placeholder="••••••••" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
                 </div>
-
-                <button id="send-btn" onclick="sendVerificationEmailLink()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send Verification Link</button>
+                <button onclick="handleDirectLogin()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Log In Now</button>
             </div>
 
-            <div id="auth-step-2" class="space-y-4 hidden text-center">
-                <div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium space-y-2">
-                    <p>Verification email dispatched to <span id="display-target" class="font-bold underline"></span>!</p>
-                    <p class="text-xs text-emerald-600">Please open your email inbox and click the <b>YES</b> option button inside the email to complete your registration.</p>
+            <!-- REGISTER VIEW (STEP 1 & STEP 2) -->
+            <div id="auth-register-section" class="space-y-4 hidden">
+                <div class="text-center">
+                    <h3 class="text-xl font-bold">Create New Account</h3>
+                    <p class="text-xs text-slate-500 mt-1">One-time email verification required</p>
                 </div>
-                <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Use a different email address</button>
+
+                <div id="auth-step-1" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Your Email Address</label>
+                        <input type="email" id="auth-input" placeholder="e.g. yourname@gmail.com" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Create Password</label>
+                        <input type="password" id="auth-pass" placeholder="••••••••" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+                    <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <input type="checkbox" id="terms-check" class="mt-1 w-4 h-4 text-rose-600 rounded">
+                        <label for="terms-check" class="text-xs text-slate-600 leading-relaxed">
+                            I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Only one profile per email.
+                        </label>
+                    </div>
+                    <button id="send-btn" onclick="sendVerificationEmailLink()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send Verification Link</button>
+                </div>
+
+                <div id="auth-step-2" class="space-y-4 hidden text-center">
+                    <div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium space-y-2">
+                        <p>Verification email dispatched to <span id="display-target" class="font-bold underline"></span>!</p>
+                        <p class="text-xs text-emerald-600">Please open your email inbox and click the <b>YES</b> option button inside the email to finalize your account.</p>
+                    </div>
+                    <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Use a different email address</button>
+                </div>
             </div>
+
         </div>
     </div>
 
@@ -255,7 +285,8 @@
         ];
 
         let registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
-        let currentUser = JSON.parse(localStorage.getItem("msp_user")) || null;
+        let currentUser = JSON.parse(sessionStorage.getItem("msp_user")) || null;
+        
         let mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || [
             { id: 1, email: "jessica@example.com", name: "Jessica Taylor", age: 27, gender: "Female", country: "United States", goal: "Dating", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80", hobbies: "Dexcom G7, running, yoga, traveling." },
             { id: 2, email: "marcus@example.com", name: "Marcus Vance", age: 31, gender: "Male", country: "Canada", goal: "Live-in", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80", hobbies: "Omnipod user, rock climbing, tech enthusiast." }
@@ -264,18 +295,21 @@
         let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; 
         let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; 
         let globalChatLogs = JSON.parse(localStorage.getItem("msp_global_chat")) || [
-            { senderName: "Global System", text: "Welcome to the Global T1D Community Live Chat Room! Say hello to everyone." }
+            { senderEmail: "system", senderName: "Global System", text: "Welcome to the Global T1D Community Live Chat Room! Say hello to everyone." }
         ];
 
         let activeChatEmail = null;
         let tempImageBase64 = ""; 
         let tempAuthInput = "";
+        let tempPasswordInput = "";
 
         window.onload = function() {
             populateCountries();
 
-            // Sync storage events across browser tabs/windows automatically
             window.addEventListener('storage', function(e) {
+                if (e.key === "msp_registry") {
+                    registeredUsersRegistry = JSON.parse(e.newValue) || {};
+                }
                 if (e.key === "msp_profiles") {
                     mockProfiles = JSON.parse(e.newValue) || [];
                     if (currentUser) renderProfiles(mockProfiles);
@@ -384,6 +418,25 @@
             }
         }
 
+        function switchAuthTab(tab) {
+            const loginSec = document.getElementById('auth-login-section');
+            const regSec = document.getElementById('auth-register-section');
+            const loginBtn = document.getElementById('tab-login-btn');
+            const regBtn = document.getElementById('tab-reg-btn');
+
+            if (tab === 'login') {
+                loginSec.classList.remove('hidden');
+                regSec.classList.add('hidden');
+                loginBtn.className = "flex-1 pb-2 font-bold text-rose-600 border-b-2 border-rose-600 text-center transition";
+                regBtn.className = "flex-1 pb-2 font-semibold text-slate-400 text-center transition";
+            } else {
+                loginSec.classList.add('hidden');
+                regSec.classList.remove('hidden');
+                regBtn.className = "flex-1 pb-2 font-bold text-rose-600 border-b-2 border-rose-600 text-center transition";
+                loginBtn.className = "flex-1 pb-2 font-semibold text-slate-400 text-center transition";
+            }
+        }
+
         function openModal(id) {
             document.getElementById(id).classList.remove('hidden');
             if (id === 'profile-modal' && currentUser) {
@@ -409,12 +462,46 @@
             document.getElementById(id).classList.add('hidden');
         }
 
+        // Direct Login with email and password without mail verification
+        function handleDirectLogin() {
+            const email = document.getElementById('login-email').value.trim().toLowerCase();
+            const pass = document.getElementById('login-pass').value;
+
+            if (!email || !pass) {
+                alert("Please enter both email and password.");
+                return;
+            }
+
+            registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
+            const user = registeredUsersRegistry[email];
+
+            if (!user) {
+                alert("No account found with this email. Please register first.");
+                return;
+            }
+
+            if (user.password !== pass) {
+                alert("Incorrect password. Please try again.");
+                return;
+            }
+
+            currentUser = user;
+            sessionStorage.setItem("msp_user", JSON.stringify(currentUser));
+            closeModal('auth-modal');
+            location.reload();
+        }
+
         function sendVerificationEmailLink() {
-            const emailVal = document.getElementById('auth-input').value.trim();
+            const emailVal = document.getElementById('auth-input').value.trim().toLowerCase();
+            const passVal = document.getElementById('auth-pass').value;
             const termsChecked = document.getElementById('terms-check').checked;
 
             if (!emailVal || !emailVal.includes('@')) {
                 alert("Please enter a valid email address.");
+                return;
+            }
+            if (!passVal || passVal.length < 4) {
+                alert("Please enter a password of at least 4 characters.");
                 return;
             }
             if (!termsChecked) {
@@ -422,10 +509,19 @@
                 return;
             }
 
+            registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
+            if (registeredUsersRegistry[emailVal]) {
+                alert("An account with this email already exists. Please use Direct Login.");
+                switchAuthTab('login');
+                document.getElementById('login-email').value = emailVal;
+                return;
+            }
+
             const sendBtn = document.getElementById('send-btn');
             sendBtn.innerText = "Sending Verification Email...";
             sendBtn.disabled = true;
             tempAuthInput = emailVal;
+            tempPasswordInput = passVal;
 
             const currentBaseUrl = window.location.href.split('?')[0];
             const yesLink = `${currentBaseUrl}?verify=yes&email=${encodeURIComponent(emailVal)}`;
@@ -455,32 +551,31 @@
         }
 
         function handleSuccessfulVerification(emailVal) {
-            if (registeredUsersRegistry[emailVal]) {
-                currentUser = registeredUsersRegistry[emailVal];
-            } else {
-                currentUser = {
-                    id: Date.now(),
-                    email: emailVal,
-                    name: "New Member",
-                    age: 25,
-                    gender: "Female",
-                    country: "United States",
-                    goal: "Dating",
-                    avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80",
-                    hobbies: "Type 1 Diabetic warrior looking to connect!"
-                };
-                registeredUsersRegistry[emailVal] = currentUser;
-                localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
-                
-                // Add to public profiles list if not already present
-                if (!mockProfiles.some(p => p.email === emailVal)) {
-                    mockProfiles.unshift(currentUser);
-                    localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
-                }
+            registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
+            
+            currentUser = {
+                id: Date.now(),
+                email: emailVal,
+                password: tempPasswordInput || "123456",
+                name: "New Member",
+                age: 25,
+                gender: "Female",
+                country: "United States",
+                goal: "Dating",
+                avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80",
+                hobbies: "Type 1 Diabetic warrior looking to connect!"
+            };
+
+            registeredUsersRegistry[emailVal] = currentUser;
+            localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
+            
+            if (!mockProfiles.some(p => p.email === emailVal)) {
+                mockProfiles.unshift(currentUser);
+                localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
             }
 
-            localStorage.setItem("msp_user", JSON.stringify(currentUser));
-            alert("Email Verified Successfully via YES option!");
+            sessionStorage.setItem("msp_user", JSON.stringify(currentUser));
+            alert("Email Verified Successfully! You can now log in directly anytime with your password.");
             window.history.replaceState({}, document.title, window.location.pathname);
             location.reload();
         }
@@ -489,18 +584,20 @@
             document.getElementById('auth-step-2').classList.add('hidden');
             document.getElementById('auth-step-1').classList.remove('hidden');
             document.getElementById('auth-input').value = "";
+            document.getElementById('auth-pass').value = "";
             document.getElementById('terms-check').checked = false;
         }
 
         function logout() {
             currentUser = null;
-            localStorage.removeItem("msp_user");
+            sessionStorage.removeItem("msp_user");
             switchView('home');
         }
 
         function deleteAccount() {
             if (confirm("Are you sure you want to permanently delete your profile?")) {
                 if (currentUser) {
+                    registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
                     delete registeredUsersRegistry[currentUser.email];
                     localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
 
@@ -532,6 +629,7 @@
             
             if (tempImageBase64) currentUser.avatar = tempImageBase64;
 
+            registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
             registeredUsersRegistry[currentUser.email] = currentUser;
 
             const index = mockProfiles.findIndex(p => p.email === currentUser.email);
@@ -544,7 +642,7 @@
             try {
                 localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
                 localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
-                localStorage.setItem("msp_user", JSON.stringify(currentUser));
+                sessionStorage.setItem("msp_user", JSON.stringify(currentUser));
             } catch (err) {
                 alert("Storage error: The image is too large. Please select a smaller file.");
                 return;
@@ -600,7 +698,7 @@
             if (!currentUser) return;
             const key = getPairKey(currentUser.email, senderEmail);
             if (requests[key]) {
-                requests[key].status = status; // 'accepted' or 'rejected'
+                requests[key].status = status; 
                 localStorage.setItem("msp_requests", JSON.stringify(requests));
                 renderProfiles(mockProfiles);
                 checkIncomingRequests();
@@ -619,7 +717,7 @@
                     pendingCount++;
                     const sender = mockProfiles.find(p => p.email === req.sender) || { name: req.sender, avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" };
                     
-                    const item = document.div = document.createElement('div');
+                    const item = document.createElement('div');
                     item.className = "flex items-center justify-between bg-white p-4 rounded-xl border border-rose-100 shadow-sm";
                     item.innerHTML = `
                         <div class="flex items-center gap-3">
@@ -649,7 +747,6 @@
             const grid = document.getElementById('profile-grid');
             grid.innerHTML = "";
 
-            // Always reload from localStorage to stay synced across tabs
             mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || mockProfiles;
 
             if (profilesArray.length === 0) {
