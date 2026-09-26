@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Sugar Partner - Global T1D Community & Connections</title>
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- EmailJS SDK -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
@@ -34,7 +32,7 @@
             <section class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-20 px-4 text-center rounded-3xl shadow-xl">
                 <div class="max-w-3xl mx-auto">
                     <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Find Someone Who Truly Understands Your Journey</h2>
-                    <p class="text-lg md:text-xl mb-8 text-rose-100">The global community where Type 1 Diabetics connect safely. Explore dating, live-in arrangements, or companionship first!</p>
+                    <p class="text-lg md:text-xl mb-8 text-rose-100">The global community where Type 1 Diabetics connect safely.</p>
                     <button onclick="openModal('auth-modal')" class="bg-white text-rose-600 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-rose-50 transition">Get Started Now</button>
                 </div>
             </section>
@@ -90,8 +88,10 @@
                 </div>
             </div>
 
-            <div id="notifications-box" class="hidden bg-rose-50 border border-rose-200 p-4 rounded-2xl text-rose-800 text-sm flex justify-between items-center">
-                <span id="notification-text">You have pending match requests!</span>
+            <!-- Incoming Requests Section -->
+            <div id="incoming-requests-container" class="hidden bg-rose-50 border border-rose-200 p-6 rounded-2xl space-y-4">
+                <h4 class="font-bold text-rose-800 text-lg">❤️ Incoming Connection Requests</h4>
+                <div id="incoming-requests-list" class="space-y-3"></div>
             </div>
 
             <div>
@@ -115,7 +115,6 @@
                 <p class="text-sm text-slate-500 mt-1">Sign in or register with your unique email</p>
             </div>
 
-            <!-- Step 1: Input Email -->
             <div id="auth-step-1" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Your Unique Email Address</label>
@@ -125,14 +124,13 @@
                 <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <input type="checkbox" id="terms-check" class="mt-1 w-4 h-4 text-rose-600 rounded">
                     <label for="terms-check" class="text-xs text-slate-600 leading-relaxed">
-                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Only one profile is allowed per unique email address.
+                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Only one profile per email.
                     </label>
                 </div>
 
                 <button id="send-btn" onclick="sendVerificationEmailLink()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send Verification Link</button>
             </div>
 
-            <!-- Step 2: Awaiting Click -->
             <div id="auth-step-2" class="space-y-4 hidden text-center">
                 <div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium space-y-2">
                     <p>Verification email dispatched to <span id="display-target" class="font-bold underline"></span>!</p>
@@ -143,7 +141,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: COMPLETE / EDIT PROFILE -->
+    <!-- MODAL 2: PROFILE MODAL -->
     <div id="profile-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-white w-full max-w-lg p-8 rounded-3xl shadow-2xl relative space-y-6 my-8">
             <h3 class="text-2xl font-bold">Your Profile Information</h3>
@@ -182,7 +180,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Profile Picture (Upload from PC/Phone)</label>
+                    <label class="block text-sm font-medium mb-1">Profile Picture</label>
                     <div class="flex items-center gap-4">
                         <img id="preview-avatar" src="" class="w-14 h-14 rounded-full object-cover border-2 border-rose-500 hidden" alt="Preview">
                         <input type="file" id="p-avatar-file" accept="image/*" class="w-full border rounded-xl p-2.5 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 outline-none">
@@ -190,7 +188,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Hobbies & T1D Setup</label>
-                    <textarea id="p-hobbies" rows="3" placeholder="Dexcom G7, Omnipod 5, hiking..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                    <textarea id="p-hobbies" rows="3" placeholder="Dexcom G7, Omnipod 5..." required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
                 </div>
                 <button type="submit" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Save Profile</button>
             </form>
@@ -269,14 +267,42 @@
             { senderName: "Global System", text: "Welcome to the Global T1D Community Live Chat Room! Say hello to everyone." }
         ];
 
-        let activeChatId = null;
+        let activeChatEmail = null;
         let tempImageBase64 = ""; 
         let tempAuthInput = "";
 
         window.onload = function() {
             populateCountries();
 
-            // Check URL query parameters for Yes/No email verification click handler
+            // Sync storage events across browser tabs/windows automatically
+            window.addEventListener('storage', function(e) {
+                if (e.key === "msp_profiles") {
+                    mockProfiles = JSON.parse(e.newValue) || [];
+                    if (currentUser) renderProfiles(mockProfiles);
+                }
+                if (e.key === "msp_global_chat") {
+                    globalChatLogs = JSON.parse(e.newValue) || [];
+                    const globalModal = document.getElementById('global-chat-modal');
+                    if (!globalModal.classList.contains('hidden')) {
+                        renderGlobalChatMessages();
+                    }
+                }
+                if (e.key === "msp_requests") {
+                    requests = JSON.parse(e.newValue) || {};
+                    if (currentUser) {
+                        renderProfiles(mockProfiles);
+                        checkIncomingRequests();
+                    }
+                }
+                if (e.key === "msp_chat_logs" && activeChatEmail) {
+                    chatLogs = JSON.parse(e.newValue) || {};
+                    const chatModal = document.getElementById('chat-modal');
+                    if (!chatModal.classList.contains('hidden')) {
+                        renderChatMessages();
+                    }
+                }
+            });
+
             const urlParams = new URLSearchParams(window.location.search);
             const verifyAction = urlParams.get('verify');
             const verifyEmail = urlParams.get('email');
@@ -285,8 +311,8 @@
                 if (verifyAction === 'yes') {
                     handleSuccessfulVerification(verifyEmail);
                 } else if (verifyAction === 'no') {
-                    alert("Registration was rejected as requested from your email.");
-                    window.location.href = window.location.pathname; // Clear URL
+                    alert("Registration was rejected from your email.");
+                    window.location.href = window.location.pathname;
                 }
             }
 
@@ -294,12 +320,11 @@
                 switchView('dashboard');
                 updateDashboardUI();
                 renderProfiles(mockProfiles);
-                checkNotifications();
+                checkIncomingRequests();
             } else {
                 switchView('home');
             }
 
-            // Image compressor file reader to prevent localStorage crash
             const fileInput = document.getElementById('p-avatar-file');
             if(fileInput) {
                 fileInput.addEventListener('change', function(e) {
@@ -314,17 +339,10 @@
                                 const MAX_HEIGHT = 300;
                                 let width = img.width;
                                 let height = img.height;
-
                                 if (width > height) {
-                                    if (width > MAX_WIDTH) {
-                                        height *= MAX_WIDTH / width;
-                                        width = MAX_WIDTH;
-                                    }
+                                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                                 } else {
-                                    if (height > MAX_HEIGHT) {
-                                        width *= MAX_HEIGHT / height;
-                                        height = MAX_HEIGHT;
-                                    }
+                                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
                                 }
                                 canvas.width = width;
                                 canvas.height = height;
@@ -347,7 +365,6 @@
         function populateCountries() {
             const filterCountry = document.getElementById('filter-country');
             const pCountry = document.getElementById('p-country');
-            
             countriesList.forEach(c => {
                 filterCountry.innerHTML += `<option value="${c}">${c}</option>`;
                 pCountry.innerHTML += `<option value="${c}">${c}</option>`;
@@ -392,7 +409,6 @@
             document.getElementById(id).classList.add('hidden');
         }
 
-        // --- EMAIL LINK YES / NO VERIFICATION FLOW ---
         function sendVerificationEmailLink() {
             const emailVal = document.getElementById('auth-input').value.trim();
             const termsChecked = document.getElementById('terms-check').checked;
@@ -409,7 +425,6 @@
             const sendBtn = document.getElementById('send-btn');
             sendBtn.innerText = "Sending Verification Email...";
             sendBtn.disabled = true;
-
             tempAuthInput = emailVal;
 
             const currentBaseUrl = window.location.href.split('?')[0];
@@ -456,13 +471,18 @@
                 };
                 registeredUsersRegistry[emailVal] = currentUser;
                 localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
-                mockProfiles.unshift(currentUser);
-                localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
+                
+                // Add to public profiles list if not already present
+                if (!mockProfiles.some(p => p.email === emailVal)) {
+                    mockProfiles.unshift(currentUser);
+                    localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
+                }
             }
 
             localStorage.setItem("msp_user", JSON.stringify(currentUser));
             alert("Email Verified Successfully via YES option!");
             window.history.replaceState({}, document.title, window.location.pathname);
+            location.reload();
         }
 
         function resetAuthStep() {
@@ -479,12 +499,12 @@
         }
 
         function deleteAccount() {
-            if (confirm("Are you sure you want to permanently delete your profile and leave the community?")) {
+            if (confirm("Are you sure you want to permanently delete your profile?")) {
                 if (currentUser) {
                     delete registeredUsersRegistry[currentUser.email];
                     localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
 
-                    mockProfiles = mockProfiles.filter(p => p.email !== currentUser.email && p.id !== currentUser.id);
+                    mockProfiles = mockProfiles.filter(p => p.email !== currentUser.email);
                     localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
                 }
                 logout();
@@ -499,7 +519,6 @@
             document.getElementById('dash-avatar').src = currentUser.avatar;
         }
 
-        // --- FIXED SAVE PROFILE (SAFE FROM STORAGE QUOTA CRASH) ---
         function saveProfile(e) {
             e.preventDefault();
             if (!currentUser) return;
@@ -511,26 +530,23 @@
             currentUser.goal = document.getElementById('p-goal').value;
             currentUser.hobbies = document.getElementById('p-hobbies').value;
             
-            if (tempImageBase64) {
-                currentUser.avatar = tempImageBase64;
-            }
+            if (tempImageBase64) currentUser.avatar = tempImageBase64;
 
             registeredUsersRegistry[currentUser.email] = currentUser;
 
-            const index = mockProfiles.findIndex(p => p.email === currentUser.email || p.id === currentUser.id);
+            const index = mockProfiles.findIndex(p => p.email === currentUser.email);
             if (index !== -1) {
                 mockProfiles[index] = currentUser;
             } else {
                 mockProfiles.unshift(currentUser);
             }
 
-            // Safe localStorage saving wrapped in try-catch to catch quota errors
             try {
                 localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
                 localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
                 localStorage.setItem("msp_user", JSON.stringify(currentUser));
             } catch (err) {
-                alert("Storage error: The uploaded picture is still too large. Please select a smaller image file.");
+                alert("Storage error: The image is too large. Please select a smaller file.");
                 return;
             }
 
@@ -561,9 +577,80 @@
             renderProfiles(mockProfiles);
         }
 
+        // --- TRUE CONNECTION REQUEST SYSTEM ---
+        function getPairKey(email1, email2) {
+            return [email1, email2].sort().join("_");
+        }
+
+        function sendRequest(targetEmail) {
+            if (!currentUser) return;
+            const key = getPairKey(currentUser.email, targetEmail);
+            requests[key] = {
+                sender: currentUser.email,
+                receiver: targetEmail,
+                status: 'pending'
+            };
+            localStorage.setItem("msp_requests", JSON.stringify(requests));
+            renderProfiles(mockProfiles);
+            checkIncomingRequests();
+            alert("Connection request sent!");
+        }
+
+        function respondRequest(senderEmail, status) {
+            if (!currentUser) return;
+            const key = getPairKey(currentUser.email, senderEmail);
+            if (requests[key]) {
+                requests[key].status = status; // 'accepted' or 'rejected'
+                localStorage.setItem("msp_requests", JSON.stringify(requests));
+                renderProfiles(mockProfiles);
+                checkIncomingRequests();
+            }
+        }
+
+        function checkIncomingRequests() {
+            if (!currentUser) return;
+            const container = document.getElementById('incoming-requests-container');
+            const list = document.getElementById('incoming-requests-list');
+            list.innerHTML = "";
+
+            let pendingCount = 0;
+            Object.values(requests).forEach(req => {
+                if (req.receiver === currentUser.email && req.status === 'pending') {
+                    pendingCount++;
+                    const sender = mockProfiles.find(p => p.email === req.sender) || { name: req.sender, avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80" };
+                    
+                    const item = document.div = document.createElement('div');
+                    item.className = "flex items-center justify-between bg-white p-4 rounded-xl border border-rose-100 shadow-sm";
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <img src="${sender.avatar}" class="w-12 h-12 rounded-full object-cover">
+                            <div>
+                                <h5 class="font-bold text-slate-800">${sender.name}</h5>
+                                <p class="text-xs text-slate-500">Wants to connect with you</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="respondRequest('${req.sender}', 'accepted')" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition">Accept ❤️</button>
+                            <button onclick="respondRequest('${req.sender}', 'rejected')" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition">Reject ❌</button>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                }
+            });
+
+            if (pendingCount > 0) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
         function renderProfiles(profilesArray) {
             const grid = document.getElementById('profile-grid');
             grid.innerHTML = "";
+
+            // Always reload from localStorage to stay synced across tabs
+            mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || mockProfiles;
 
             if (profilesArray.length === 0) {
                 grid.innerHTML = `<p class="text-slate-500 col-span-full text-center py-8">No profiles found matching your search filters.</p>`;
@@ -573,16 +660,19 @@
             profilesArray.forEach(p => {
                 if (currentUser && p.email === currentUser.email) return;
 
-                const reqStatus = requests[p.id || p.email] || 'none'; 
+                const key = getPairKey(currentUser.email, p.email);
+                const reqObj = requests[key];
+                let status = reqObj ? reqObj.status : 'none';
+
                 let actionBtnHTML = '';
-                if (reqStatus === 'none') {
-                    actionBtnHTML = `<button onclick="sendRequest('${p.id || p.email}')" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Send Request ❤️</button>`;
-                } else if (reqStatus === 'pending') {
+                if (status === 'none') {
+                    actionBtnHTML = `<button onclick="sendRequest('${p.email}')" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Send Request ❤️</button>`;
+                } else if (status === 'pending') {
                     actionBtnHTML = `<button disabled class="w-full bg-amber-50 text-amber-600 font-medium py-2.5 rounded-xl cursor-not-allowed">Request Pending ⏳</button>`;
-                } else if (reqStatus === 'rejected') {
-                    actionBtnHTML = `<button onclick="sendRequest('${p.id || p.email}')" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Request Rejected. Try Again?</button>`;
-                } else if (reqStatus === 'accepted') {
-                    actionBtnHTML = `<button onclick="openChat('${p.id || p.email}')" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm">Open Live Chat 💬</button>`;
+                } else if (status === 'rejected') {
+                    actionBtnHTML = `<button onclick="sendRequest('${p.email}')" class="w-full bg-red-50 text-red-600 font-medium py-2.5 rounded-xl hover:bg-red-100 hover:text-red-700 transition">Request Rejected ❌ (Try Again)</button>`;
+                } else if (status === 'accepted') {
+                    actionBtnHTML = `<button onclick="openChat('${p.email}')" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm">Open Live Chat 💬</button>`;
                 }
 
                 const card = document.createElement('div');
@@ -605,39 +695,10 @@
             });
         }
 
-        function sendRequest(profileKey) {
-            requests[profileKey] = 'pending';
-            localStorage.setItem("msp_requests", JSON.stringify(requests));
-            setTimeout(() => {
-                requests[profileKey] = Math.random() > 0.4 ? 'accepted' : 'rejected';
-                localStorage.setItem("msp_requests", JSON.stringify(requests));
-                renderProfiles(mockProfiles);
-                checkNotifications();
-            }, 3500);
-            renderProfiles(mockProfiles);
-            alert("Connection request sent successfully!");
-        }
-
-        function checkNotifications() {
-            const notificationBox = document.getElementById('notifications-box');
-            const notificationText = document.getElementById('notification-text');
-            let hasRejected = Object.values(requests).includes('rejected');
-            let hasAccepted = Object.values(requests).includes('accepted');
-
-            if (hasRejected) {
-                notificationBox.classList.remove('hidden');
-                notificationText.innerHTML = `⚠️ One of your match requests was declined.`;
-            } else if (hasAccepted) {
-                notificationBox.classList.remove('hidden');
-                notificationText.innerHTML = `🎉 Great news! A connection request has been accepted. You can now chat directly!`;
-            } else {
-                notificationBox.classList.add('hidden');
-            }
-        }
-
-        function openChat(profileKey) {
-            activeChatId = profileKey;
-            const peer = mockProfiles.find(p => (p.id == profileKey || p.email == profileKey));
+        // --- DIRECT CHAT WITH ACCEPTED PEER ---
+        function openChat(peerEmail) {
+            activeChatEmail = peerEmail;
+            const peer = mockProfiles.find(p => p.email === peerEmail);
             document.getElementById('chat-peer-name').innerText = peer.name;
             document.getElementById('chat-peer-avatar').src = peer.avatar;
             renderChatMessages();
@@ -647,12 +708,16 @@
         function renderChatMessages() {
             const container = document.getElementById('chat-messages');
             container.innerHTML = "";
-            if (!chatLogs[activeChatId]) {
-                chatLogs[activeChatId] = [{ sender: 'peer', text: `Hi there! So great to match with another T1D member.` }];
+            const chatKey = getPairKey(currentUser.email, activeChatEmail);
+            chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {};
+
+            if (!chatLogs[chatKey]) {
+                chatLogs[chatKey] = [];
             }
-            chatLogs[activeChatId].forEach(msg => {
+
+            chatLogs[chatKey].forEach(msg => {
                 const bubble = document.createElement('div');
-                if (msg.sender === 'user') {
+                if (msg.sender === currentUser.email) {
                     bubble.className = "flex justify-end";
                     bubble.innerHTML = `<div class="bg-rose-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-xs text-sm shadow-sm">${msg.text}</div>`;
                 } else {
@@ -670,19 +735,19 @@
             const txt = textInput.value.trim();
             if(!txt) return;
 
-            chatLogs[activeChatId].push({ sender: 'user', text: txt });
-            textInput.value = "";
-            renderChatMessages();
-            localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
+            const chatKey = getPairKey(currentUser.email, activeChatEmail);
+            chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {};
+            if (!chatLogs[chatKey]) chatLogs[chatKey] = [];
 
-            setTimeout(() => {
-                chatLogs[activeChatId].push({ sender: 'peer', text: "That's so relatable! CGM alarms always go off at the worst times." });
-                renderChatMessages();
-                localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
-            }, 1500);
+            chatLogs[chatKey].push({ sender: currentUser.email, text: txt });
+            textInput.value = "";
+            localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
+            renderChatMessages();
         }
 
+        // --- GLOBAL LIVE CHAT ROOM ---
         function openGlobalChatRoom() {
+            globalChatLogs = JSON.parse(localStorage.getItem("msp_global_chat")) || globalChatLogs;
             renderGlobalChatMessages();
             openModal('global-chat-modal');
         }
@@ -692,7 +757,7 @@
             container.innerHTML = "";
             globalChatLogs.forEach(msg => {
                 const bubble = document.createElement('div');
-                const isMe = currentUser && msg.senderName === currentUser.name;
+                const isMe = currentUser && msg.senderEmail === currentUser.email;
                 if (isMe) {
                     bubble.className = "flex flex-col items-end";
                     bubble.innerHTML = `
@@ -718,6 +783,7 @@
             if (!txt) return;
 
             const newMsg = {
+                senderEmail: currentUser ? currentUser.email : "guest",
                 senderName: currentUser ? currentUser.name : "Guest",
                 text: txt
             };
