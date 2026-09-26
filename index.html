@@ -134,7 +134,7 @@
                 <button onclick="handleDirectLogin()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Log In Now</button>
             </div>
 
-            <!-- REGISTER VIEW (STEP 1 & STEP 2) -->
+            <!-- REGISTER VIEW -->
             <div id="auth-register-section" class="space-y-4 hidden">
                 <div class="text-center">
                     <h3 class="text-xl font-bold">Create New Account</h3>
@@ -300,8 +300,6 @@
 
         let activeChatEmail = null;
         let tempImageBase64 = ""; 
-        let tempAuthInput = "";
-        let tempPasswordInput = "";
 
         window.onload = function() {
             populateCountries();
@@ -520,8 +518,9 @@
             const sendBtn = document.getElementById('send-btn');
             sendBtn.innerText = "Sending Verification Email...";
             sendBtn.disabled = true;
-            tempAuthInput = emailVal;
-            tempPasswordInput = passVal;
+
+            // Save password temporarily in sessionStorage so it persists across the email link redirect page reload
+            sessionStorage.setItem("temp_reg_pass", passVal);
 
             const currentBaseUrl = window.location.href.split('?')[0];
             const yesLink = `${currentBaseUrl}?verify=yes&email=${encodeURIComponent(emailVal)}`;
@@ -538,13 +537,13 @@
                 .then(function(response) {
                     sendBtn.innerText = "Send Verification Link";
                     sendBtn.disabled = false;
-                    document.getElementById('display-target').innerText = tempAuthInput;
+                    document.getElementById('display-target').innerText = emailVal;
                     document.getElementById('auth-step-1').classList.add('hidden');
                     document.getElementById('auth-step-2').classList.remove('hidden');
                 }, function(error) {
                     sendBtn.innerText = "Send Verification Link";
                     sendBtn.disabled = false;
-                    document.getElementById('display-target').innerText = tempAuthInput;
+                    document.getElementById('display-target').innerText = emailVal;
                     document.getElementById('auth-step-1').classList.add('hidden');
                     document.getElementById('auth-step-2').classList.remove('hidden');
                 });
@@ -552,11 +551,12 @@
 
         function handleSuccessfulVerification(emailVal) {
             registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {};
+            const savedPassword = sessionStorage.getItem("temp_reg_pass") || "123456";
             
             currentUser = {
                 id: Date.now(),
                 email: emailVal,
-                password: tempPasswordInput || "123456",
+                password: savedPassword,
                 name: "New Member",
                 age: 25,
                 gender: "Female",
@@ -575,6 +575,7 @@
             }
 
             sessionStorage.setItem("msp_user", JSON.stringify(currentUser));
+            sessionStorage.removeItem("temp_reg_pass");
             alert("Email Verified Successfully! You can now log in directly anytime with your password.");
             window.history.replaceState({}, document.title, window.location.pathname);
             location.reload();
@@ -586,6 +587,7 @@
             document.getElementById('auth-input').value = "";
             document.getElementById('auth-pass').value = "";
             document.getElementById('terms-check').checked = false;
+            sessionStorage.removeItem("temp_reg_pass");
         }
 
         function logout() {
