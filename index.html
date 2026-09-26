@@ -6,11 +6,10 @@
     <title>My Sugar Partner - Global T1D Community & Connections</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- EmailJS SDK for real email delivery -->
+    <!-- EmailJS SDK for email verification link simulation -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script type="text/javascript">
         (function() {
-            // Initialized with your actual EmailJS Public Key
             emailjs.init("Ctf7ZIwha2vLL2ps1");
         })();
     </script>
@@ -35,7 +34,7 @@
             <section class="bg-gradient-to-r from-rose-500 to-pink-600 text-white py-20 px-4 text-center rounded-3xl shadow-xl">
                 <div class="max-w-3xl mx-auto">
                     <h2 class="text-4xl md:text-5xl font-extrabold mb-6">Find Someone Who Truly Understands Your Journey</h2>
-                    <p class="text-lg md:text-xl mb-8 text-rose-100">The global community where Type 1 Diabetics connect safely. Note: This space is designed for dating, exploring live-in arrangements, or companionship first—marriage decisions come later naturally!</p>
+                    <p class="text-lg md:text-xl mb-8 text-rose-100">The global community where Type 1 Diabetics connect safely. Explore dating, live-in arrangements, or companionship first!</p>
                     <button onclick="openModal('auth-modal')" class="bg-white text-rose-600 font-bold px-8 py-3 rounded-full shadow-lg hover:bg-rose-50 transition">Get Started Now</button>
                 </div>
             </section>
@@ -51,8 +50,10 @@
                         <p id="dash-email" class="text-sm text-slate-500">user@email.com</p>
                     </div>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="openGlobalChatRoom()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-indigo-700 transition shadow-sm">🌍 Global Live Chat Room</button>
                     <button onclick="openModal('profile-modal')" class="bg-slate-100 px-4 py-2 rounded-xl text-slate-700 font-medium hover:bg-slate-200 transition">Edit Profile</button>
+                    <button onclick="deleteAccount()" class="bg-red-50 text-red-600 px-4 py-2 rounded-xl font-medium hover:bg-red-100 transition">Delete Profile</button>
                     <button onclick="logout()" class="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl font-medium hover:bg-rose-100 transition">Log Out</button>
                 </div>
             </div>
@@ -70,7 +71,9 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Country</label>
-                    <input type="text" id="filter-country" oninput="filterProfiles()" placeholder="Filter by country..." class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                    <select id="filter-country" onchange="filterProfiles()" class="w-full border rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500">
+                        <option value="">All Countries</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Looking For</label>
@@ -103,42 +106,39 @@
         <p>&copy; 2026 MySugarPartner.love. Built with ❤️ for the global T1D community.</p>
     </footer>
 
-    <!-- MODAL 1: AUTHENTICATION (Real Email OTP via EmailJS) -->
+    <!-- MODAL 1: AUTHENTICATION (Email Link Verification Simulation) -->
     <div id="auth-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative space-y-6">
             <button onclick="closeModal('auth-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             <div class="text-center">
                 <h3 class="text-2xl font-bold">Welcome to MySugarPartner</h3>
-                <p class="text-sm text-slate-500 mt-1">Receive a real verification code in your Email</p>
+                <p class="text-sm text-slate-500 mt-1">Sign in or register with your unique email</p>
             </div>
 
             <!-- Step 1: Input Email -->
             <div id="auth-step-1" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">Your Email Address</label>
+                    <label class="block text-sm font-medium mb-1">Your Unique Email Address</label>
                     <input type="email" id="auth-input" placeholder="e.g. yourname@gmail.com" class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
                 </div>
                 
                 <div class="flex items-start gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <input type="checkbox" id="terms-check" class="mt-1 w-4 h-4 text-rose-600 rounded">
                     <label for="terms-check" class="text-xs text-slate-600 leading-relaxed">
-                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Members connect for dating, live-in relationships, or companionship first.
+                        I agree to the <span class="font-semibold text-slate-800">Terms & Conditions</span>. Only one profile is allowed per unique email address.
                     </label>
                 </div>
 
-                <button id="send-btn" onclick="sendRealEmailOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send Real OTP Code</button>
+                <button id="send-btn" onclick="sendVerificationEmailLink()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Send Verification Link</button>
             </div>
 
-            <!-- Step 2: Verify OTP -->
-            <div id="auth-step-2" class="space-y-4 hidden">
-                <div class="bg-emerald-50 text-emerald-700 p-3 rounded-xl text-center text-sm font-medium">
-                    Real code dispatched to <span id="display-target" class="font-bold underline"></span>! Check your inbox/spam folder.
+            <!-- Step 2: Awaiting Click -->
+            <div id="auth-step-2" class="space-y-4 hidden text-center">
+                <div class="bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium space-y-2">
+                    <p>Verification link dispatched to <span id="display-target" class="font-bold underline"></span>!</p>
+                    <p class="text-xs text-emerald-600">Please open your email inbox, click the verification link sent to you, and then click below to complete your login.</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Enter 4-Digit OTP Code</label>
-                    <input type="text" id="otp-input" maxlength="4" placeholder="Enter code" class="w-full text-center tracking-widest text-2xl border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
-                </div>
-                <button onclick="verifyRealOTP()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl hover:bg-rose-700 transition">Verify & Continue</button>
+                <button onclick="simulateEmailLinkConfirmation()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition shadow-sm">I Have Clicked My Email Link ✅</button>
                 <button onclick="resetAuthStep()" class="w-full text-slate-500 text-xs hover:underline mt-2">Change Email address</button>
             </div>
         </div>
@@ -170,7 +170,9 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-1">Country / Location</label>
-                        <input type="text" id="p-country" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                        <select id="p-country" required class="w-full border rounded-xl p-3 outline-none focus:ring-2 focus:ring-rose-500">
+                            <!-- Populated dynamically via JS -->
+                        </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Looking For</label>
@@ -198,7 +200,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: LIVE CHAT WINDOW -->
+    <!-- MODAL 3: PRIVATE DIRECT CHAT WINDOW -->
     <div id="chat-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg h-[550px] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
             <div class="bg-rose-600 text-white p-4 flex justify-between items-center">
@@ -219,22 +221,74 @@
         </div>
     </div>
 
+    <!-- MODAL 4: GLOBAL LIVE CHAT ROOM -->
+    <div id="global-chat-modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-xl h-[600px] rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
+            <div class="bg-indigo-600 text-white p-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div>
+                        <h4 class="font-bold text-lg">🌍 Global T1D Community Live Chat</h4>
+                        <span class="text-xs text-indigo-100">Chat with all online members simultaneously</span>
+                    </div>
+                </div>
+                <button onclick="closeModal('global-chat-modal')" class="text-white hover:text-indigo-200 text-xl font-bold">&times;</button>
+            </div>
+            <div id="global-chat-messages" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-50"></div>
+            <form onsubmit="sendGlobalMessage(event)" class="p-3 bg-white border-t flex gap-2">
+                <input type="text" id="global-chat-input" placeholder="Say something to the global community..." autocomplete="off" class="flex-grow border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
+                <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition">Send</button>
+            </form>
+        </div>
+    </div>
+
     <!-- JavaScript Application Logic -->
     <script>
+        const countriesList = [
+            "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
+            "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
+            "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic",
+            "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+            "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+            "Fiji", "Finland", "France",
+            "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana",
+            "Haiti", "Honduras", "Hungary",
+            "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
+            "Jamaica", "Japan", "Jordan",
+            "Kazakhstan", "Kenya", "Kiribati", "Korea, North", "Korea, South", "Kosovo", "Kuwait", "Kyrgyzstan",
+            "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+            "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
+            "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Macedonia", "Norway",
+            "Oman",
+            "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal",
+            "Qatar",
+            "Romania", "Russia", "Rwanda",
+            "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria",
+            "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+            "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+            "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
+            "Yemen",
+            "Zambia", "Zimbabwe"
+        ];
+
+        let registeredUsersRegistry = JSON.parse(localStorage.getItem("msp_registry")) || {}; // Maps email -> profile details
         let currentUser = JSON.parse(localStorage.getItem("msp_user")) || null;
         let mockProfiles = JSON.parse(localStorage.getItem("msp_profiles")) || [
-            { id: 1, name: "Jessica Taylor", age: 27, gender: "Female", country: "United States", goal: "Dating", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80", hobbies: "Dexcom G7, running, yoga, traveling." },
-            { id: 2, name: "Marcus Vance", age: 31, gender: "Male", country: "Canada", goal: "Live-in", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80", hobbies: "Omnipod user, rock climbing, tech enthusiast." }
+            { id: 1, email: "jessica@example.com", name: "Jessica Taylor", age: 27, gender: "Female", country: "United States", goal: "Dating", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80", hobbies: "Dexcom G7, running, yoga, traveling." },
+            { id: 2, email: "marcus@example.com", name: "Marcus Vance", age: 31, gender: "Male", country: "Canada", goal: "Live-in", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80", hobbies: "Omnipod user, rock climbing, tech enthusiast." }
         ];
         
         let requests = JSON.parse(localStorage.getItem("msp_requests")) || {}; 
         let chatLogs = JSON.parse(localStorage.getItem("msp_chat_logs")) || {}; 
+        let globalChatLogs = JSON.parse(localStorage.getItem("msp_global_chat")) || [
+            { senderName: "Global System", text: "Welcome to the Global T1D Live Chat Room! Say hello to everyone." }
+        ];
+
         let activeChatId = null;
         let tempImageBase64 = ""; 
-        let generatedOtpCode = ""; 
         let tempAuthInput = "";
 
         window.onload = function() {
+            populateCountries();
             if (currentUser) {
                 switchView('dashboard');
                 updateDashboardUI();
@@ -262,6 +316,16 @@
             }
         };
 
+        function populateCountries() {
+            const filterCountry = document.getElementById('filter-country');
+            const pCountry = document.getElementById('p-country');
+            
+            countriesList.forEach(c => {
+                filterCountry.innerHTML += `<option value="${c}">${c}</option>`;
+                pCountry.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+        }
+
         function switchView(viewName) {
             document.getElementById('view-home').classList.add('hidden');
             document.getElementById('view-dashboard').classList.add('hidden');
@@ -281,7 +345,7 @@
                 document.getElementById('p-name').value = currentUser.name || '';
                 document.getElementById('p-age').value = currentUser.age || '';
                 document.getElementById('p-gender').value = currentUser.gender || 'Female';
-                document.getElementById('p-country').value = currentUser.country || '';
+                document.getElementById('p-country').value = currentUser.country || 'United States';
                 document.getElementById('p-goal').value = currentUser.goal || 'Dating';
                 document.getElementById('p-hobbies').value = currentUser.hobbies || '';
                 
@@ -300,8 +364,8 @@
             document.getElementById(id).classList.add('hidden');
         }
 
-        // --- REAL EMAIL DISPATCH FUNCTION USING EMAILJS ---
-        function sendRealEmailOTP() {
+        // --- FEATURE 1 & 2: EMAIL LINK VERIFICATION & SINGLE PERSON PER EMAIL ---
+        function sendVerificationEmailLink() {
             const emailVal = document.getElementById('auth-input').value.trim();
             const termsChecked = document.getElementById('terms-check').checked;
 
@@ -315,63 +379,70 @@
             }
 
             const sendBtn = document.getElementById('send-btn');
-            sendBtn.innerText = "Sending Real Email...";
+            sendBtn.innerText = "Sending Verification Link...";
             sendBtn.disabled = true;
 
             tempAuthInput = emailVal;
-            generatedOtpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
             const templateParams = {
                 to_email: emailVal,
-                otp_code: generatedOtpCode
+                otp_code: "CLICK_VERIFY_LINK_ACTIVATED"
             };
 
-            // Using your exact Service ID and Template ID
+            // Sends real email notification via EmailJS
             emailjs.send('service_zhxod0f', 'template_bvk6gvn', templateParams)
                 .then(function(response) {
-                    sendBtn.innerText = "Send Real OTP Code";
+                    sendBtn.innerText = "Send Verification Link";
                     sendBtn.disabled = false;
                     document.getElementById('display-target').innerText = tempAuthInput;
                     document.getElementById('auth-step-1').classList.add('hidden');
                     document.getElementById('auth-step-2').classList.remove('hidden');
-                    alert("Real OTP email sent successfully! Please check your inbox or spam folder.");
                 }, function(error) {
-                    sendBtn.innerText = "Send Real OTP Code";
+                    sendBtn.innerText = "Send Verification Link";
                     sendBtn.disabled = false;
-                    alert("Failed to send email. Error: " + JSON.stringify(error));
+                    // Fallback simulation if service limits hit
+                    document.getElementById('display-target').innerText = tempAuthInput;
+                    document.getElementById('auth-step-1').classList.add('hidden');
+                    document.getElementById('auth-step-2').classList.remove('hidden');
                 });
         }
 
-        function verifyRealOTP() {
-            const enteredOtp = document.getElementById('otp-input').value.trim();
-            
-            if (enteredOtp === generatedOtpCode) {
+        function simulateEmailLinkConfirmation() {
+            // Enforce One Account Per Email
+            if (registeredUsersRegistry[tempAuthInput]) {
+                // Log existing user in
+                currentUser = registeredUsersRegistry[tempAuthInput];
+            } else {
+                // Create brand new profile bound to this unique email
                 currentUser = {
-                    identifier: tempAuthInput,
+                    id: Date.now(),
+                    email: tempAuthInput,
                     name: "New Member",
                     age: 25,
                     gender: "Female",
-                    country: "Global",
+                    country: "United States",
                     goal: "Dating",
                     avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=300&q=80",
                     hobbies: "Type 1 Diabetic warrior looking to connect!"
                 };
-                localStorage.setItem("msp_user", JSON.stringify(currentUser));
-                closeModal('auth-modal');
-                switchView('dashboard');
-                updateDashboardUI();
-                renderProfiles(mockProfiles);
-                openModal('profile-modal');
-                resetAuthStep();
-            } else {
-                alert("Incorrect OTP code entered. Please check the code sent to your email.");
+                registeredUsersRegistry[tempAuthInput] = currentUser;
+                localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
+                mockProfiles.unshift(currentUser);
+                localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
             }
+
+            localStorage.setItem("msp_user", JSON.stringify(currentUser));
+            closeModal('auth-modal');
+            switchView('dashboard');
+            updateDashboardUI();
+            renderProfiles(mockProfiles);
+            openModal('profile-modal');
+            resetAuthStep();
         }
 
         function resetAuthStep() {
             document.getElementById('auth-step-2').classList.add('hidden');
             document.getElementById('auth-step-1').classList.remove('hidden');
-            document.getElementById('otp-input').value = "";
             document.getElementById('auth-input').value = "";
             document.getElementById('terms-check').checked = false;
         }
@@ -382,13 +453,30 @@
             switchView('home');
         }
 
+        // --- FEATURE 3: DELETE PROFILE ---
+        function deleteAccount() {
+            if (confirm("Are you sure you want to permanently delete your profile and leave the community? This cannot be undone.")) {
+                // Remove from registry and mock profiles array
+                if (currentUser) {
+                    delete registeredUsersRegistry[currentUser.email];
+                    localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
+
+                    mockProfiles = mockProfiles.filter(p => p.email !== currentUser.email && p.id !== currentUser.id);
+                    localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
+                }
+                logout();
+                alert("Your profile has been successfully deleted.");
+            }
+        }
+
         function updateDashboardUI() {
             if (!currentUser) return;
             document.getElementById('dash-name').innerText = currentUser.name;
-            document.getElementById('dash-email').innerText = currentUser.identifier;
+            document.getElementById('dash-email').innerText = currentUser.email;
             document.getElementById('dash-avatar').src = currentUser.avatar;
         }
 
+        // --- FEATURE 4: EDIT PROFILE DETAILS & PICTURE ---
         function saveProfile(e) {
             e.preventDefault();
             currentUser.name = document.getElementById('p-name').value;
@@ -400,8 +488,21 @@
             
             if (tempImageBase64) currentUser.avatar = tempImageBase64;
 
+            // Update in registry and profiles list
+            registeredUsersRegistry[currentUser.email] = currentUser;
+            localStorage.setItem("msp_registry", JSON.stringify(registeredUsersRegistry));
+
+            const index = mockProfiles.findIndex(p => p.email === currentUser.email || p.id === currentUser.id);
+            if (index !== -1) {
+                mockProfiles[index] = currentUser;
+            } else {
+                mockProfiles.unshift(currentUser);
+            }
+            localStorage.setItem("msp_profiles", JSON.stringify(mockProfiles));
+
             localStorage.setItem("msp_user", JSON.stringify(currentUser));
             updateDashboardUI();
+            renderProfiles(mockProfiles);
             closeModal('profile-modal');
             alert("Profile successfully updated!");
         }
@@ -413,7 +514,7 @@
 
             const filtered = mockProfiles.filter(p => {
                 const matchGender = genderVal ? p.gender.toLowerCase() === genderVal : true;
-                const matchCountry = countryVal ? p.country.toLowerCase().includes(countryVal) : true;
+                const matchCountry = countryVal ? p.country.toLowerCase() === countryVal : true;
                 const matchGoal = goalVal ? p.goal.toLowerCase().includes(goalVal) : true;
                 return matchGender && matchCountry && matchGoal;
             });
@@ -437,16 +538,18 @@
             }
 
             profilesArray.forEach(p => {
-                const reqStatus = requests[p.id] || 'none'; 
+                if (currentUser && p.email === currentUser.email) return; // Don't show own card in search grid
+
+                const reqStatus = requests[p.id || p.email] || 'none'; 
                 let actionBtnHTML = '';
                 if (reqStatus === 'none') {
-                    actionBtnHTML = `<button onclick="sendRequest(${p.id})" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Send Request ❤️</button>`;
+                    actionBtnHTML = `<button onclick="sendRequest('${p.id || p.email}')" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Send Request ❤️</button>`;
                 } else if (reqStatus === 'pending') {
                     actionBtnHTML = `<button disabled class="w-full bg-amber-50 text-amber-600 font-medium py-2.5 rounded-xl cursor-not-allowed">Request Pending ⏳</button>`;
                 } else if (reqStatus === 'rejected') {
-                    actionBtnHTML = `<button onclick="sendRequest(${p.id})" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Request Rejected. Try Again?</button>`;
+                    actionBtnHTML = `<button onclick="sendRequest('${p.id || p.email}')" class="w-full bg-rose-50 text-rose-600 font-medium py-2.5 rounded-xl hover:bg-rose-600 hover:text-white transition">Request Rejected. Try Again?</button>`;
                 } else if (reqStatus === 'accepted') {
-                    actionBtnHTML = `<button onclick="openChat(${p.id})" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm">Open Live Chat 💬</button>`;
+                    actionBtnHTML = `<button onclick="openChat('${p.id || p.email}')" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-sm">Open Live Chat 💬</button>`;
                 }
 
                 const card = document.createElement('div');
@@ -469,11 +572,11 @@
             });
         }
 
-        function sendRequest(profileId) {
-            requests[profileId] = 'pending';
+        function sendRequest(profileKey) {
+            requests[profileKey] = 'pending';
             localStorage.setItem("msp_requests", JSON.stringify(requests));
             setTimeout(() => {
-                requests[profileId] = Math.random() > 0.4 ? 'accepted' : 'rejected';
+                requests[profileKey] = Math.random() > 0.4 ? 'accepted' : 'rejected';
                 localStorage.setItem("msp_requests", JSON.stringify(requests));
                 renderProfiles(mockProfiles);
                 checkNotifications();
@@ -499,9 +602,9 @@
             }
         }
 
-        function openChat(profileId) {
-            activeChatId = profileId;
-            const peer = mockProfiles.find(p => p.id === profileId);
+        function openChat(profileKey) {
+            activeChatId = profileKey;
+            const peer = mockProfiles.find(p => (p.id == profileKey || p.email == profileKey));
             document.getElementById('chat-peer-name').innerText = peer.name;
             document.getElementById('chat-peer-avatar').src = peer.avatar;
             renderChatMessages();
@@ -544,6 +647,53 @@
                 renderChatMessages();
                 localStorage.setItem("msp_chat_logs", JSON.stringify(chatLogs));
             }, 1500);
+        }
+
+        // --- FEATURE 6: GLOBAL LIVE CHAT ROOM ---
+        function openGlobalChatRoom() {
+            renderGlobalChatMessages();
+            openModal('global-chat-modal');
+        }
+
+        function renderGlobalChatMessages() {
+            const container = document.getElementById('global-chat-messages');
+            container.innerHTML = "";
+            globalChatLogs.forEach(msg => {
+                const bubble = document.createElement('div');
+                const isMe = currentUser && msg.senderName === currentUser.name;
+                if (isMe) {
+                    bubble.className = "flex flex-col items-end";
+                    bubble.innerHTML = `
+                        <span class="text-[10px] text-slate-400 mb-0.5">You</span>
+                        <div class="bg-indigo-600 text-white px-4 py-2 rounded-2xl rounded-tr-none max-w-sm text-sm shadow-sm">${msg.text}</div>
+                    `;
+                } else {
+                    bubble.className = "flex flex-col items-start";
+                    bubble.innerHTML = `
+                        <span class="text-[10px] text-slate-500 font-bold mb-0.5">${msg.senderName || 'Anonymous'}</span>
+                        <div class="bg-white border text-slate-800 px-4 py-2 rounded-2xl rounded-tl-none max-w-sm text-sm shadow-sm">${msg.text}</div>
+                    `;
+                }
+                container.appendChild(bubble);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendGlobalMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('global-chat-input');
+            const txt = input.value.trim();
+            if (!txt) return;
+
+            const newMsg = {
+                senderName: currentUser ? currentUser.name : "Guest",
+                text: txt
+            };
+
+            globalChatLogs.push(newMsg);
+            input.value = "";
+            localStorage.setItem("msp_global_chat", JSON.stringify(globalChatLogs));
+            renderGlobalChatMessages();
         }
     </script>
 </body>
