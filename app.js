@@ -75,19 +75,24 @@ onAuthStateChanged(auth, async (user) => {
 
 function renderAuthView() {
     appContainer.innerHTML = `
-        <div class="flex flex-col items-center justify-center flex-1 px-4 py-12">
-            <h1 class="text-4xl font-bold text-pink-600 mb-2">mysugarpartner.love ❤️</h1>
-            <p class="text-gray-600 mb-8">Connecting Type 1 Diabetic Hearts Worldwide</p>
-            <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-                <h2 class="text-2xl font-bold mb-6 text-gray-700" id="form-title">Welcome Back</h2>
-                <input type="email" id="email" placeholder="Enter your email id" class="w-full px-4 py-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
-                <input type="password" id="password" placeholder="Enter password" class="w-full px-4 py-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
-                <button id="auth-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition">Login</button>
-                <div class="flex justify-between mt-4 text-sm">
-                    <button id="toggle-mode" class="text-pink-600 hover:underline">Create new account</button>
-                    <button id="forgot-password" class="text-gray-500 hover:underline">Forgot password?</button>
+        <div class="flex flex-col items-center justify-between flex-1 px-4 py-12 min-h-screen">
+            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
+                <h1 class="text-4xl font-bold text-pink-600 mb-2">mysugarpartner.love ❤️</h1>
+                <p class="text-gray-600 mb-8">Connecting Type 1 Diabetic Hearts Worldwide</p>
+                <div class="bg-white p-8 rounded-2xl shadow-xl w-full">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-700" id="form-title">Welcome Back</h2>
+                    <input type="email" id="email" placeholder="Enter your email id" class="w-full px-4 py-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
+                    <input type="password" id="password" placeholder="Enter password" class="w-full px-4 py-3 mb-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400">
+                    <button id="auth-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition">Login</button>
+                    <div class="flex justify-between mt-4 text-sm">
+                        <button id="toggle-mode" class="text-pink-600 hover:underline">Create new account</button>
+                        <button id="forgot-password" class="text-gray-500 hover:underline">Forgot password?</button>
+                    </div>
                 </div>
             </div>
+            <footer class="text-center text-xs text-gray-500 mt-8 py-4 border-t w-full">
+                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
+            </footer>
         </div>
     `;
 
@@ -130,13 +135,18 @@ function renderAuthView() {
 
 function renderVerificationPendingView(user) {
     appContainer.innerHTML = `
-        <div class="flex flex-col items-center justify-center flex-1 p-6 text-center">
-            <div class="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
-                <h2 class="text-2xl font-bold text-red-500 mb-4">Email Verification Required</h2>
-                <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it, then click below.</p>
-                <button onclick="window.location.reload()" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3">I Have Verified, Continue</button>
-                <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
+        <div class="flex flex-col items-center justify-between flex-1 p-6 text-center min-h-screen">
+            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
+                <div class="bg-white p-8 rounded-2xl shadow-lg w-full">
+                    <h2 class="text-2xl font-bold text-red-500 mb-4">Email Verification Required</h2>
+                    <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it, then click below.</p>
+                    <button onclick="window.location.reload()" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3">I Have Verified, Continue</button>
+                    <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
+                </div>
             </div>
+            <footer class="text-center text-xs text-gray-500 mt-8 py-4 border-t w-full">
+                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
+            </footer>
         </div>
     `;
 }
@@ -144,26 +154,31 @@ function renderVerificationPendingView(user) {
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
     appContainer.innerHTML = `
-        <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full">
-            <h2 class="text-2xl font-bold text-pink-600 mb-6">Create Your Type 1 Profile ❤️</h2>
-            <div class="space-y-4">
-                <input type="text" id="p-name" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg">
-                <input type="number" id="p-age" placeholder="Age" class="w-full px-4 py-2 border rounded-lg">
-                <select id="p-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
-                <select id="p-interest" class="w-full px-4 py-2 border rounded-lg">
-                    <option value="Dating">Dating</option>
-                    <option value="Short-term relationship">Short-term relationship</option>
-                    <option value="Long-term relationship">Long-term relationship</option>
-                    <option value="Marriage">Marriage</option>
-                </select>
-                <input type="number" id="p-diagnosed" placeholder="Diagnosed Year (e.g., 2015)" class="w-full px-4 py-2 border rounded-lg">
-                <input type="text" id="p-hobbies" placeholder="Hobbies (comma separated)" class="w-full px-4 py-2 border rounded-lg">
-                <div>
-                    <label class="block text-sm text-gray-600 mb-1">Profile Picture</label>
-                    <input type="file" id="p-img" accept="image/*" class="w-full">
+        <div class="flex flex-col justify-between min-h-screen">
+            <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full">
+                <h2 class="text-2xl font-bold text-pink-600 mb-6">Create Your Type 1 Profile ❤️</h2>
+                <div class="space-y-4">
+                    <input type="text" id="p-name" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg">
+                    <input type="number" id="p-age" placeholder="Age" class="w-full px-4 py-2 border rounded-lg">
+                    <select id="p-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
+                    <select id="p-interest" class="w-full px-4 py-2 border rounded-lg">
+                        <option value="Dating">Dating</option>
+                        <option value="Short-term relationship">Short-term relationship</option>
+                        <option value="Long-term relationship">Long-term relationship</option>
+                        <option value="Marriage">Marriage</option>
+                    </select>
+                    <input type="number" id="p-diagnosed" placeholder="Diagnosed Year (e.g., 2015)" class="w-full px-4 py-2 border rounded-lg">
+                    <input type="text" id="p-hobbies" placeholder="Hobbies (comma separated)" class="w-full px-4 py-2 border rounded-lg">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Profile Picture</label>
+                        <input type="file" id="p-img" accept="image/*" class="w-full">
+                    </div>
+                    <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save Profile</button>
                 </div>
-                <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save Profile</button>
             </div>
+            <footer class="text-center text-xs text-gray-500 py-4 border-t w-full bg-white">
+                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
+            </footer>
         </div>
     `;
 
@@ -218,19 +233,26 @@ function convertImageToBase64(file) {
 
 function renderMainDashboard(user) {
     appContainer.innerHTML = `
-        <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-            <h1 class="text-xl font-bold text-pink-600">mysugarpartner.love ❤️</h1>
-            <div class="flex space-x-6 text-sm font-medium items-center">
-                <button onclick="switchTab('profile')" class="hover:text-pink-600">My Profile</button>
-                <button onclick="switchTab('edit')" class="hover:text-pink-600">Edit Profile</button>
-                <button onclick="switchTab('finding')" class="hover:text-pink-600">Finding Buddy</button>
-                <button onclick="switchTab('requests')" class="hover:text-pink-600">Requests</button>
-                <button onclick="switchTab('chat')" class="hover:text-pink-600">Chat</button>
-                <button onclick="switchTab('delete')" class="text-red-500 hover:underline">Delete Profile</button>
-                <button onclick="handleLogout()" class="bg-gray-100 px-3 py-1 rounded text-gray-700 hover:bg-gray-200">Logout</button>
+        <div class="flex flex-col min-h-screen justify-between">
+            <div>
+                <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.love ❤️</h1>
+                    <div class="flex space-x-6 text-sm font-medium items-center">
+                        <button onclick="switchTab('profile')" class="hover:text-pink-600">My Profile</button>
+                        <button onclick="switchTab('edit')" class="hover:text-pink-600">Edit Profile</button>
+                        <button onclick="switchTab('finding')" class="hover:text-pink-600">Finding Buddy</button>
+                        <button onclick="switchTab('requests')" class="hover:text-pink-600">Requests</button>
+                        <button onclick="switchTab('chat')" class="hover:text-pink-600">Chat</button>
+                        <button onclick="switchTab('delete')" class="text-red-500 hover:underline">Delete Profile</button>
+                        <button onclick="handleLogout()" class="bg-gray-100 px-3 py-1 rounded text-gray-700 hover:bg-gray-200">Logout</button>
+                    </div>
+                </nav>
+                <div id="dashboard-content" class="flex-1 p-6 max-w-6xl mx-auto w-full"></div>
             </div>
-        </nav>
-        <div id="dashboard-content" class="flex-1 p-6 max-w-6xl mx-auto w-full"></div>
+            <footer class="text-center text-xs text-gray-500 py-4 border-t bg-white mt-auto">
+                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
+            </footer>
+        </div>
     `;
     window.switchTab('profile');
 }
@@ -403,7 +425,7 @@ window.switchTab = async function(tab) {
     }
     else if (tab === 'chat') {
         container.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-xl shadow h-[75vh] overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-xl shadow h-[70vh] overflow-hidden">
                 <div class="border-r p-4 overflow-y-auto"><h3 class="font-bold mb-4">Accepted Buddies</h3><div id="chat-buddies-list"></div></div>
                 <div class="col-span-2 flex flex-col justify-between p-4" id="chat-window-container">
                     <div class="text-center text-gray-400 my-auto">Select a buddy from the left to start chatting</div>
@@ -423,7 +445,6 @@ window.switchTab = async function(tab) {
                 if (bData) {
                     const liveDotHtml = bData.isLive ? `<span class="live-dot ml-2" title="Live Now"></span>` : '';
                     
-                    // Listen live for unread indicators/notifications for each buddy
                     const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
                     onSnapshot(msgQuery, (snapshot) => {
                         let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
@@ -497,7 +518,6 @@ window.openChat = async function(buddyId, buddyName) {
         </div>
     `;
 
-    // Real-time listener for messages so UI updates smoothly without wiping input box
     const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(30));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
@@ -508,7 +528,6 @@ window.openChat = async function(buddyId, buddyName) {
         snapshot.forEach(docSnap => {
             const m = docSnap.data();
             if ((m.senderId === currentUser.uid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUser.uid)) {
-                // Mark incoming messages as read
                 if (m.receiverId === currentUser.uid && !m.read) {
                     updateDoc(doc(db, "messages", docSnap.id), { read: true });
                 }
@@ -574,7 +593,6 @@ window.blockBuddy = async function(buddyId) {
 
 window.startVideoCall = function(buddyId) {
     const currentUid = auth.currentUser.uid;
-    // Alphabetically sort user IDs so both users join the exact same unique Jitsi room name
     const roomUsers = [currentUid, buddyId].sort().join('-');
     window.open(`https://meet.jit.si/mysugarpartner-${roomUsers}`, '_blank');
 };
