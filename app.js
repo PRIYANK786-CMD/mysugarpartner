@@ -24,6 +24,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Attach auth globally for safety
+window.auth = auth;
+
 const appContainer = document.getElementById("app");
 
 // Comprehensive A-to-Z Country List
@@ -135,7 +138,7 @@ function renderVerificationPendingView(user) {
                 <h2 class="text-2xl font-bold text-red-500 mb-4">Email Verification Required</h2>
                 <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Click the link to confirm, then click below.</p>
                 <button onclick="window.location.reload()" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3">I Have Verified, Continue</button>
-                <button onclick="auth.signOut()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
+                <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
             </div>
         </div>
     `;
@@ -160,7 +163,7 @@ function renderProfileCreationView(user) {
                 <input type="number" id="p-diagnosed" placeholder="Diagnosed Year (e.g., 2015)" class="w-full px-4 py-2 border rounded-lg">
                 <input type="text" id="p-hobbies" placeholder="Hobbies (comma separated)" class="w-full px-4 py-2 border rounded-lg">
                 <div>
-                    <label class="block text-sm text-gray-600 mb-1">Profile Picture (Auto-adjusted)</label>
+                    <label class="block text-sm text-gray-600 mb-1">Profile Picture</label>
                     <input type="file" id="p-img" accept="image/*" class="w-full">
                 </div>
                 <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save Profile</button>
@@ -550,6 +553,8 @@ window.startVideoCall = function(buddyId) {
     alert("Initiating secure peer-to-peer live video call connection...");
     window.open(`https://meet.jit.si/mysugarpartner-${auth.currentUser.uid}-${buddyId}`, '_blank');
 };
+
+// Global Logout Function Handler
 window.handleLogout = async function() {
     try {
         await signOut(auth);
