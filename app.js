@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, 
-    collection, query, where, getDocs, addDoc, orderBy, limit, onSnapshot, serverTimestamp 
+    collection, query, where, getDocs, addDoc, orderBy, limit, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Your Firebase Console configuration credentials
@@ -56,6 +56,17 @@ const countries = [
 ];
 
 let globalCallUnsubscribe = null;
+let peerConnection = null;
+let localStream = null;
+let activeCallId = null;
+let callDocUnsubscribe = null;
+
+const rtcConfig = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
 
 // Router state handler
 onAuthStateChanged(auth, async (user) => {
@@ -90,13 +101,13 @@ function listenForIncomingCalls(userId) {
             if (document.getElementById("incoming-call-modal")) return;
 
             const modalHtml = `
-                <div id="incoming-call-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-pulse">
+                <div id="incoming-call-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-pulse">
                     <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
                         <h3 class="text-xl font-bold text-pink-600 mb-2">📹 Incoming Video Call</h3>
-                        <p class="text-gray-700 mb-6"><b>${callerData.name}</b> is calling you for a video chat.</p>
+                        <p class="text-gray-700 mb-6"><b>${callerData.name}</b> is calling you for an in-app video chat.</p>
                         <div class="flex gap-4">
-                            <button onclick="acceptVideoCall('${docSnap.id}', '${callData.roomUrl}')" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600">Accept</button>
-                            <button onclick="rejectVideoCall('${docSnap.id}')" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600">Reject</button>
+                            <button onclick="acceptInAppCall('${docSnap.id}', '${callData.callerId}')" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600">Accept</button>
+                            <button onclick="rejectInAppCall('${docSnap.id}')" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600">Reject</button>
                         </div>
                     </div>
                 </div>
@@ -106,14 +117,19 @@ function listenForIncomingCalls(userId) {
     });
 }
 
-window.acceptVideoCall = async function(callId, roomUrl) {
-    await updateDoc(doc(db, "videoCalls", callId), { status: "accepted" });
+window.acceptInAppCall = async function(callId, callerId) {
+    activeCallId = callId;
     const modal = document.getElementById("incoming-call-modal");
     if (modal) modal.remove();
-    window.open(roomUrl, '_blank');
+
+    // Switch to chat tab with the caller so video screen appears instantly
+    window.switchTab('chat');
+    setTimeout(() => {
+        window.openChat(callerId, "Buddy", true); // auto-open video stream view
+    }, 500);
 };
 
-window.rejectVideoCall = async function(callId) {
+window.rejectInAppCall = async function(callId) {
     await updateDoc(doc(db, "videoCalls", callId), { status: "rejected" });
     const modal = document.getElementById("incoming-call-modal");
     if (modal) modal.remove();
@@ -541,7 +557,7 @@ window.respondRequest = async function(reqId, status) {
     window.switchTab('requests');
 };
 
-window.openChat = async function(buddyId, buddyName) {
+window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     if (activeChatUnsubscribe) {
         activeChatUnsubscribe();
         activeChatUnsubscribe = null;
@@ -552,8 +568,6 @@ window.openChat = async function(buddyId, buddyName) {
     const chatMetaRef = doc(db, "chatMeta", chatId);
     const chatMetaSnap = await getDoc(chatMetaRef);
     const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
-    
-    // Each user has their own clear timestamp
     const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
 
     const container = document.getElementById("chat-window-container");
@@ -561,10 +575,15 @@ window.openChat = async function(buddyId, buddyName) {
         <div class="flex justify-between items-center border-b pb-3 mb-2">
             <h3 class="font-bold text-lg">${buddyName}</h3>
             <div class="space-x-3 flex items-center">
-                <button onclick="startVideoCall('${buddyId}')" class="bg-pink-600 text-white px-3 py-1 rounded text-sm">📹 Video Call</button>
+                <button onclick="startInAppVideoCall('${buddyId}')" class="bg-pink-600 text-white px-3 py-1 rounded text-sm font-semibold">📹 Video Call</button>
                 <button onclick="clearChatHistory('${buddyId}')" class="text-gray-500 text-sm hover:underline">Clear Chat</button>
                 <button onclick="blockBuddy('${buddyId}')" class="text-red-500 text-sm hover:underline">Block</button>
             </div>
+        </div>
+        <div id="video-container" class="hidden relative bg-black rounded-xl overflow-hidden mb-3 h-64 flex items-center justify-center">
+            <video id="remote-video" autoplay playsinline class="w-full h-full object-cover"></video>
+            <video id="local-video" autoplay playsinline muted class="absolute bottom-3 right-3 w-28 h-20 object-cover rounded-lg border-2 border-white shadow-lg"></video>
+            <button onclick="endInAppVideoCall()" class="absolute top-3 right-3 bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow">End Call</button>
         </div>
         <div id="messages-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col" style="-webkit-overflow-scrolling: touch;"></div>
         <div class="flex gap-2 pt-3 border-t mt-2">
@@ -590,7 +609,6 @@ window.openChat = async function(buddyId, buddyName) {
         msgBox.innerHTML = "";
         snapshot.forEach(docSnap => {
             const m = docSnap.data();
-            // Check if message is part of current conversation and sent AFTER this user's clear timestamp
             const isMyConversation = (m.senderId === currentUid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUid);
             
             if (isMyConversation && m.timestamp > myClearTime) {
@@ -612,6 +630,159 @@ window.openChat = async function(buddyId, buddyName) {
         });
         msgBox.scrollTop = msgBox.scrollHeight;
     });
+
+    if (autoStartVideo && activeCallId) {
+        answerInAppVideoCall(activeCallId, buddyId);
+    }
+};
+
+window.startInAppVideoCall = async function(buddyId) {
+    const currentUid = auth.currentUser.uid;
+    const callRef = doc(collection(db, "videoCalls"));
+    activeCallId = callRef.id;
+
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('video-container').classList.remove('hidden');
+        document.getElementById('local-video').srcObject = localStream;
+
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+            document.getElementById('remote-video').srcObject = event.streams[0];
+        };
+
+        const offerCandidates = collection(callRef, "offerCandidates");
+        const answerCandidates = collection(callRef, "answerCandidates");
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                addDoc(offerCandidates, event.candidate.toJSON());
+            }
+        };
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        await setDoc(callRef, {
+            callerId: currentUid,
+            receiverId: buddyId,
+            offer: { type: offer.type, sdp: offer.sdp },
+            status: "ringing",
+            timestamp: Date.now()
+        });
+
+        alert("Calling buddy... Waiting for them to answer.");
+
+        callDocUnsubscribe = onSnapshot(callRef, async (docSnap) => {
+            const data = docSnap.data();
+            if (!data) return;
+
+            if (data.status === 'accepted' && !peerConnection.currentRemoteDescription && data.answer) {
+                const answer = new RTCSessionDescription(data.answer);
+                await peerConnection.setRemoteDescription(answer);
+            } else if (data.status === 'rejected') {
+                alert("Call rejected by your buddy.");
+                endInAppVideoCall();
+            }
+        });
+
+        onSnapshot(answerCandidates, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    const candidate = new RTCIceCandidate(change.doc.data());
+                    peerConnection.addIceCandidate(candidate);
+                }
+            });
+        });
+
+    } catch (err) {
+        alert("Camera/Microphone access error or permission denied.");
+        console.error(err);
+    }
+};
+
+window.answerInAppVideoCall = async function(callId, buddyId) {
+    activeCallId = callId;
+    const callRef = doc(db, "videoCalls", callId);
+    const callSnap = await getDoc(callRef);
+    if (!callSnap.exists()) return;
+
+    const callData = callSnap.data();
+
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('video-container').classList.remove('hidden');
+        document.getElementById('local-video').srcObject = localStream;
+
+        peerConnection = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        peerConnection.ontrack = (event) => {
+            document.getElementById('remote-video').srcObject = event.streams[0];
+        };
+
+        const offerCandidates = collection(callRef, "offerCandidates");
+        const answerCandidates = collection(callRef, "answerCandidates");
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                addDoc(answerCandidates, event.candidate.toJSON());
+            }
+        };
+
+        const offer = new RTCSessionDescription(callData.offer);
+        await peerConnection.setRemoteDescription(offer);
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        await updateDoc(callRef, {
+            answer: { type: answer.type, sdp: answer.sdp },
+            status: "accepted"
+        });
+
+        onSnapshot(offerCandidates, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    const candidate = new RTCIceCandidate(change.doc.data());
+                    peerConnection.addIceCandidate(candidate);
+                }
+            });
+        });
+
+    } catch (err) {
+        alert("Camera/Microphone permission denied.");
+        console.error(err);
+    }
+};
+
+window.endInAppVideoCall = async function() {
+    if (activeCallId) {
+        try {
+            await updateDoc(doc(db, "videoCalls", activeCallId), { status: "ended" });
+        } catch (e) {}
+    }
+
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    if (callDocUnsubscribe) {
+        callDocUnsubscribe();
+        callDocUnsubscribe = null;
+    }
+
+    activeCallId = null;
+    const videoContainer = document.getElementById('video-container');
+    if (videoContainer) videoContainer.classList.add('hidden');
 };
 
 window.clearChatHistory = async function(buddyId) {
@@ -620,12 +791,10 @@ window.clearChatHistory = async function(buddyId) {
         const chatId = [currentUid, buddyId].sort().join('_');
         const chatMetaRef = doc(db, "chatMeta", chatId);
         
-        // Update the timestamp so only messages after right now appear for this user
         await setDoc(chatMetaRef, {
             [`cleared_${currentUid}`]: Date.now()
         }, { merge: true });
 
-        // Reload the chat window to reflect empty screen immediately
         window.openChat(buddyId, document.querySelector('#chat-window-container h3').innerText);
     }
 };
@@ -679,36 +848,9 @@ window.blockBuddy = async function(buddyId) {
     }
 };
 
-window.startVideoCall = async function(buddyId) {
-    const currentUid = auth.currentUser.uid;
-    const roomUsers = [currentUid, buddyId].sort().join('-');
-    const roomUrl = `https://meet.jit.si/mysugarpartner-${roomUsers}`;
-
-    const callRef = doc(collection(db, "videoCalls"));
-    await setDoc(callRef, {
-        callerId: currentUid,
-        receiverId: buddyId,
-        roomUrl: roomUrl,
-        status: "ringing",
-        timestamp: Date.now()
-    });
-
-    alert("Calling buddy... Waiting for them to answer.");
-
-    const unsubscribe = onSnapshot(callRef, (docSnap) => {
-        const data = docSnap.data();
-        if (data.status === 'accepted') {
-            unsubscribe();
-            window.open(roomUrl, '_blank');
-        } else if (data.status === 'rejected') {
-            unsubscribe();
-            alert("Call rejected by your buddy.");
-        }
-    });
-};
-
 window.handleLogout = async function() {
     try {
+        window.endInAppVideoCall();
         if (activeChatUnsubscribe) activeChatUnsubscribe();
         if (globalCallUnsubscribe) globalCallUnsubscribe();
         await signOut(auth);
