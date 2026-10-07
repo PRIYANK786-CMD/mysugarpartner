@@ -9,7 +9,7 @@ import {
     collection, query, where, getDocs, addDoc, orderBy, limit 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Your exact Firebase Console configuration credentials
+// Your Firebase Console configuration credentials
 const firebaseConfig = {
     apiKey: "AIzaSyCuRvH-41ts0fPKl3s2jlRMcRWkFpwOgK8",
     authDomain: "mysugarpartner-ebeaf.firebaseapp.com",
@@ -23,6 +23,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 const appContainer = document.getElementById("app");
 
 // Comprehensive A-to-Z Country List
@@ -222,17 +223,19 @@ function renderMainDashboard(user) {
     appContainer.innerHTML = `
         <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
             <h1 class="text-xl font-bold text-pink-600">mysugarpartner.love ❤️</h1>
-            <div class="flex space-x-6 text-sm font-medium">
+            <div class="flex space-x-6 text-sm font-medium items-center">
+                <button onclick="switchTab('profile')" class="hover:text-pink-600">My Profile</button>
                 <button onclick="switchTab('edit')" class="hover:text-pink-600">Edit Profile</button>
                 <button onclick="switchTab('finding')" class="hover:text-pink-600">Finding Buddy</button>
                 <button onclick="switchTab('requests')" class="hover:text-pink-600">Requests</button>
                 <button onclick="switchTab('chat')" class="hover:text-pink-600">Chat</button>
                 <button onclick="switchTab('delete')" class="text-red-500 hover:underline">Delete Profile</button>
+                <button onclick="auth.signOut()" class="bg-gray-100 px-3 py-1 rounded text-gray-700 hover:bg-gray-200">Logout</button>
             </div>
         </nav>
         <div id="dashboard-content" class="flex-1 p-6 max-w-6xl mx-auto w-full"></div>
     `;
-    window.switchTab('finding');
+    window.switchTab('profile');
 }
 
 window.switchTab = async function(tab) {
@@ -241,14 +244,27 @@ window.switchTab = async function(tab) {
     const userDocSnap = await getDoc(doc(db, "users", currentUser.uid));
     const userData = userDocSnap.data();
 
-    if (tab === 'edit') {
+    if (tab === 'profile') {
+        container.innerHTML = `
+            <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow border text-center">
+                <h2 class="text-2xl font-bold text-pink-600 mb-4">My Profile Card</h2>
+                <img src="${userData.profilePic || 'https://via.placeholder.com/150'}" class="w-32 h-32 mx-auto rounded-full object-cover mb-4 border-4 border-pink-100">
+                <h3 class="font-bold text-xl">${userData.name || 'User'}, ${userData.age || ''}</h3>
+                <p class="text-gray-500 text-sm mt-1">Country: ${userData.country || ''}</p>
+                <p class="text-pink-600 font-medium text-sm mt-1">Looking for: ${userData.interest || ''}</p>
+                <p class="text-gray-600 text-xs mt-2">Diagnosed Year: ${userData.diagnosedYear || ''}</p>
+                <p class="text-gray-600 text-xs mt-1">Hobbies: ${userData.hobbies || ''}</p>
+            </div>
+        `;
+    }
+    else if (tab === 'edit') {
         let countryOptions = countries.map(c => `<option value="${c}" ${userData.country === c ? 'selected' : ''}>${c}</option>`).join('');
         container.innerHTML = `
             <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Edit Profile</h2>
                 <div class="space-y-4">
-                    <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg">
-                    <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg">
+                    <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
+                    <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
                     <select id="e-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
                     <select id="e-interest" class="w-full px-4 py-2 border rounded-lg">
                         <option value="Dating" ${userData.interest === 'Dating' ? 'selected' : ''}>Dating</option>
@@ -256,8 +272,12 @@ window.switchTab = async function(tab) {
                         <option value="Long-term relationship" ${userData.interest === 'Long-term relationship' ? 'selected' : ''}>Long-term relationship</option>
                         <option value="Marriage" ${userData.interest === 'Marriage' ? 'selected' : ''}>Marriage</option>
                     </select>
-                    <input type="number" id="e-diagnosed" value="${userData.diagnosedYear || ''}" class="w-full px-4 py-2 border rounded-lg">
-                    <input type="text" id="e-hobbies" value="${userData.hobbies || ''}" class="w-full px-4 py-2 border rounded-lg">
+                    <input type="number" id="e-diagnosed" value="${userData.diagnosedYear || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Diagnosed Year">
+                    <input type="text" id="e-hobbies" value="${userData.hobbies || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Hobbies">
+                    <div>
+                        <label class="block text-sm text-gray-600 mb-1">Change Profile Picture</label>
+                        <input type="file" id="e-img" accept="image/*" class="w-full">
+                    </div>
                     <input type="password" id="e-newpass" placeholder="New Password (optional)" class="w-full px-4 py-2 border rounded-lg">
                     <button id="update-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold">Save Changes</button>
                 </div>
@@ -268,15 +288,23 @@ window.switchTab = async function(tab) {
             const newPass = document.getElementById("e-newpass").value;
             if (newPass) await updatePassword(currentUser, newPass);
 
+            const fileInput = document.getElementById("e-img");
+            let imageUrl = userData.profilePic || "";
+            if (fileInput.files[0]) {
+                imageUrl = await convertImageToBase64(fileInput.files[0]);
+            }
+
             await updateDoc(doc(db, "users", currentUser.uid), {
                 name: document.getElementById("e-name").value,
                 age: document.getElementById("e-age").value,
                 country: document.getElementById("e-country").value,
                 interest: document.getElementById("e-interest").value,
                 diagnosedYear: document.getElementById("e-diagnosed").value,
-                hobbies: document.getElementById("e-hobbies").value
+                hobbies: document.getElementById("e-hobbies").value,
+                profilePic: imageUrl
             });
             alert("Profile updated successfully!");
+            window.switchTab('profile');
         });
     }
     else if (tab === 'finding') {
@@ -306,7 +334,6 @@ window.switchTab = async function(tab) {
             snap.forEach(docSnap => {
                 const data = docSnap.data();
                 if (data.uid === currentUser.uid) return;
-                // Hide if blocked
                 if (data.blockedUsers && data.blockedUsers.includes(currentUser.uid)) return;
 
                 if (sCountry && data.country !== sCountry) return;
@@ -334,7 +361,6 @@ window.switchTab = async function(tab) {
             </div>
         `;
 
-        // Load incoming
         const incQuery = query(collection(db, "requests"), where("receiverId", "==", currentUser.uid), where("status", "==", "pending"));
         const incSnap = await getDocs(incQuery);
         const incList = document.getElementById("incoming-list");
@@ -355,7 +381,6 @@ window.switchTab = async function(tab) {
             }
         });
 
-        // Load outgoing
         const outQuery = query(collection(db, "requests"), where("senderId", "==", currentUser.uid));
         const outSnap = await getDocs(outQuery);
         const outList = document.getElementById("outgoing-list");
@@ -383,7 +408,6 @@ window.switchTab = async function(tab) {
             </div>
         `;
 
-        // Fetch accepted buddies
         const reqsSnap = await getDocs(collection(db, "requests"));
         const buddyListContainer = document.getElementById("chat-buddies-list");
         
@@ -431,7 +455,6 @@ window.respondRequest = async function(reqId, status) {
     window.switchTab('requests');
 };
 
-// Open Chat Box & Load Chunked Messages (15 limit)
 window.openChat = async function(buddyId, buddyName) {
     const container = document.getElementById("chat-window-container");
     container.innerHTML = `
@@ -490,7 +513,6 @@ async function loadChatMessages(buddyId) {
     const msgBox = document.getElementById("messages-box");
     const currentUser = auth.currentUser;
     
-    // Query last 15 messages for smooth performance
     const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(15));
     const snap = await getDocs(q);
     
