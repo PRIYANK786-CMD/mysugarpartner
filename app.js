@@ -518,6 +518,14 @@ window.openChat = async function(buddyId, buddyName) {
         </div>
     `;
 
+    // Listen for Enter key on the input field
+    document.getElementById("chat-msg-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            window.sendTextMessage(buddyId);
+        }
+    });
+
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(50));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
@@ -544,13 +552,13 @@ window.openChat = async function(buddyId, buddyName) {
                 `;
             }
         });
-        // Auto scroll to bottom smoothly on load or new messages
         msgBox.scrollTop = msgBox.scrollHeight;
     });
 };
 
 window.sendTextMessage = async function(buddyId) {
     const input = document.getElementById("chat-msg-input");
+    if (!input) return;
     const text = input.value.trim();
     if (!text) return;
 
