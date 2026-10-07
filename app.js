@@ -55,6 +55,8 @@ const countries = [
     "Zambia", "Zimbabwe"
 ];
 
+let globalCallUnsubscribe = null;
+
 // Router state handler
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -66,12 +68,57 @@ onAuthStateChanged(auth, async (user) => {
                 renderProfileCreationView(user);
             } else {
                 renderMainDashboard(user);
+                listenForIncomingCalls(user.uid);
             }
         }
     } else {
+        if (globalCallUnsubscribe) globalCallUnsubscribe();
         renderAuthView();
     }
 });
+
+function listenForIncomingCalls(userId) {
+    if (globalCallUnsubscribe) globalCallUnsubscribe();
+
+    const q = query(collection(db, "videoCalls"), where("receiverId", "==", userId), where("status", "==", "ringing"));
+    globalCallUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.forEach(async (docSnap) => {
+            const callData = docSnap.data();
+            const callerDoc = await getDoc(doc(db, "users", callData.callerId));
+            const callerData = callerDoc.data() || { name: "Buddy" };
+
+            // Check if notification modal already exists to prevent duplicates
+            if (document.getElementById("incoming-call-modal")) return;
+
+            const modalHtml = `
+                <div id="incoming-call-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-pulse">
+                    <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+                        <h3 class="text-xl font-bold text-pink-600 mb-2">📹 Incoming Video Call</h3>
+                        <p class="text-gray-700 mb-6"><b>${callerData.name}</b> is calling you for a video chat.</p>
+                        <div class="flex gap-4">
+                            <button onclick="acceptVideoCall('${docSnap.id}', '${callData.roomUrl}')" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600">Accept</button>
+                            <button onclick="rejectVideoCall('${docSnap.id}')" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600">Reject</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        });
+    });
+}
+
+window.acceptVideoCall = async function(callId, roomUrl) {
+    await updateDoc(doc(db, "videoCalls", callId), { status: "accepted" });
+    const modal = document.getElementById("incoming-call-modal");
+    if (modal) modal.remove();
+    window.open(roomUrl, '_blank');
+};
+
+window.rejectVideoCall = async function(callId) {
+    await updateDoc(doc(db, "videoCalls", callId), { status: "rejected" });
+    const modal = document.getElementById("incoming-call-modal");
+    if (modal) modal.remove();
+};
 
 function renderAuthView() {
     appContainer.innerHTML = `
@@ -206,6 +253,7 @@ function renderProfileCreationView(user) {
 
         await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
         renderMainDashboard(user);
+        listenForIncomingCalls(user.uid);
     });
 }
 
@@ -518,7 +566,7 @@ window.openChat = async function(buddyId, buddyName) {
         </div>
     `;
 
-    // Listen for Enter key on the input field
+    // Enter key listener for sending message
     document.getElementById("chat-msg-input").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -605,15 +653,40 @@ window.blockBuddy = async function(buddyId) {
     }
 };
 
-window.startVideoCall = function(buddyId) {
+window.startVideoCall = async function(buddyId) {
     const currentUid = auth.currentUser.uid;
     const roomUsers = [currentUid, buddyId].sort().join('-');
-    window.open(`https://meet.jit.si/mysugarpartner-${roomUsers}`, '_blank');
+    const roomUrl = `https://meet.jit.si/mysugarpartner-${roomUsers}`;
+
+    // Create a call signal record in Firestore
+    const callRef = doc(collection(db, "videoCalls"));
+    await setDoc(callRef, {
+        callerId: currentUid,
+        receiverId: buddyId,
+        roomUrl: roomUrl,
+        status: "ringing",
+        timestamp: Date.now()
+    });
+
+    alert("Calling buddy... Waiting for them to answer.");
+
+    // Listen for response
+    const unsubscribe = onSnapshot(callRef, (docSnap) => {
+        const data = docSnap.data();
+        if (data.status === 'accepted') {
+            unsubscribe();
+            window.open(roomUrl, '_blank');
+        } else if (data.status === 'rejected') {
+            unsubscribe();
+            alert("Call rejected by your buddy.");
+        }
+    });
 };
 
 window.handleLogout = async function() {
     try {
         if (activeChatUnsubscribe) activeChatUnsubscribe();
+        if (globalCallUnsubscribe) globalCallUnsubscribe();
         await signOut(auth);
         window.location.reload();
     } catch (error) {
