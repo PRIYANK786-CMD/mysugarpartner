@@ -230,7 +230,7 @@ function renderMainDashboard(user) {
                 <button onclick="switchTab('requests')" class="hover:text-pink-600">Requests</button>
                 <button onclick="switchTab('chat')" class="hover:text-pink-600">Chat</button>
                 <button onclick="switchTab('delete')" class="text-red-500 hover:underline">Delete Profile</button>
-                <button onclick="auth.signOut()" class="bg-gray-100 px-3 py-1 rounded text-gray-700 hover:bg-gray-200">Logout</button>
+                <button onclick="handleLogout()" class="bg-gray-100 px-3 py-1 rounded text-gray-700 hover:bg-gray-200">Logout</button>
             </div>
         </nav>
         <div id="dashboard-content" class="flex-1 p-6 max-w-6xl mx-auto w-full"></div>
@@ -549,4 +549,12 @@ window.blockBuddy = async function(buddyId) {
 window.startVideoCall = function(buddyId) {
     alert("Initiating secure peer-to-peer live video call connection...");
     window.open(`https://meet.jit.si/mysugarpartner-${auth.currentUser.uid}-${buddyId}`, '_blank');
+};
+window.handleLogout = async function() {
+    try {
+        await signOut(auth);
+        window.location.reload();
+    } catch (error) {
+        alert(error.message);
+    }
 };
