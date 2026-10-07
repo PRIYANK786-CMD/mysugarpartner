@@ -425,9 +425,9 @@ window.switchTab = async function(tab) {
     }
     else if (tab === 'chat') {
         container.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-xl shadow h-[70vh] overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white rounded-xl shadow h-[75vh] overflow-hidden">
                 <div class="border-r p-4 overflow-y-auto"><h3 class="font-bold mb-4">Accepted Buddies</h3><div id="chat-buddies-list"></div></div>
-                <div class="col-span-2 flex flex-col justify-between p-4" id="chat-window-container">
+                <div class="col-span-2 flex flex-col h-full overflow-hidden p-4" id="chat-window-container">
                     <div class="text-center text-gray-400 my-auto">Select a buddy from the left to start chatting</div>
                 </div>
             </div>
@@ -502,15 +502,15 @@ window.openChat = async function(buddyId, buddyName) {
 
     const container = document.getElementById("chat-window-container");
     container.innerHTML = `
-        <div class="flex justify-between items-center border-b pb-3">
+        <div class="flex justify-between items-center border-b pb-3 mb-2">
             <h3 class="font-bold text-lg">${buddyName}</h3>
             <div class="space-x-3">
                 <button onclick="startVideoCall('${buddyId}')" class="bg-pink-600 text-white px-3 py-1 rounded text-sm">📹 Video Call</button>
                 <button onclick="blockBuddy('${buddyId}')" class="text-red-500 text-sm hover:underline">Block</button>
             </div>
         </div>
-        <div id="messages-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col-reverse"></div>
-        <div class="flex gap-2 pt-3 border-t">
+        <div id="messages-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col" style="-webkit-overflow-scrolling: touch;"></div>
+        <div class="flex gap-2 pt-3 border-t mt-2">
             <input type="file" id="media-input" class="hidden" onchange="sendMediaMessage('${buddyId}')">
             <button onclick="document.getElementById('media-input').click()" class="bg-gray-200 px-3 py-2 rounded">📎</button>
             <input type="text" id="chat-msg-input" placeholder="Type a message..." class="flex-1 border px-3 py-2 rounded-lg">
@@ -518,7 +518,7 @@ window.openChat = async function(buddyId, buddyName) {
         </div>
     `;
 
-    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(30));
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(50));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
         if (!msgBox) return;
@@ -536,7 +536,7 @@ window.openChat = async function(buddyId, buddyName) {
                 if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
 
                 msgBox.innerHTML += `
-                    <div class="flex ${m.senderId === currentUser.uid ? 'justify-end' : 'justify-start'}">
+                    <div class="flex ${m.senderId === currentUser.uid ? 'justify-end' : 'justify-start'} w-full">
                         <div class="bg-${m.senderId === currentUser.uid ? 'pink-100 text-gray-800' : 'gray-100'} p-3 rounded-xl max-w-xs">
                             ${contentHtml}
                         </div>
@@ -544,6 +544,8 @@ window.openChat = async function(buddyId, buddyName) {
                 `;
             }
         });
+        // Auto scroll to bottom smoothly on load or new messages
+        msgBox.scrollTop = msgBox.scrollHeight;
     });
 };
 
@@ -561,6 +563,8 @@ window.sendTextMessage = async function(buddyId) {
         read: false
     });
     input.value = "";
+    const msgBox = document.getElementById("messages-box");
+    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
 };
 
 window.sendMediaMessage = async function(buddyId) {
@@ -577,6 +581,8 @@ window.sendMediaMessage = async function(buddyId) {
         timestamp: Date.now(),
         read: false
     });
+    const msgBox = document.getElementById("messages-box");
+    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
 };
 
 window.blockBuddy = async function(buddyId) {
