@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, 
-    collection, query, where, getDocs, addDoc, orderBy, limit 
+    collection, query, where, getDocs, addDoc, orderBy, limit, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Your Firebase Console configuration credentials
@@ -24,9 +24,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Attach auth globally for safety
 window.auth = auth;
-
 const appContainer = document.getElementById("app");
 
 // Comprehensive A-to-Z Country List
@@ -75,7 +73,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// 1. Authentication View
 function renderAuthView() {
     appContainer.innerHTML = `
         <div class="flex flex-col items-center justify-center flex-1 px-4 py-12">
@@ -111,7 +108,7 @@ function renderAuthView() {
             } else {
                 const userCred = await createUserWithEmailAndPassword(auth, email, password);
                 await sendEmailVerification(userCred.user);
-                alert("Verification email sent! Click 'Yes, it's me' in your inbox link before logging in.");
+                alert("Verification email sent! Click the link in your inbox before logging in.");
             }
         } catch (error) {
             alert(error.message);
@@ -136,7 +133,7 @@ function renderVerificationPendingView(user) {
         <div class="flex flex-col items-center justify-center flex-1 p-6 text-center">
             <div class="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full">
                 <h2 class="text-2xl font-bold text-red-500 mb-4">Email Verification Required</h2>
-                <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Click the link to confirm, then click below.</p>
+                <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it, then click below.</p>
                 <button onclick="window.location.reload()" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3">I Have Verified, Continue</button>
                 <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
             </div>
@@ -144,7 +141,6 @@ function renderVerificationPendingView(user) {
     `;
 }
 
-// 2. Profile Creation View
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
     appContainer.innerHTML = `
@@ -198,7 +194,6 @@ function renderProfileCreationView(user) {
     });
 }
 
-// Auto-adjust and compress image utility
 function convertImageToBase64(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -221,7 +216,6 @@ function convertImageToBase64(file) {
     });
 }
 
-// 3. Main Dashboard & Menu Navigation Router
 function renderMainDashboard(user) {
     appContainer.innerHTML = `
         <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
@@ -241,7 +235,14 @@ function renderMainDashboard(user) {
     window.switchTab('profile');
 }
 
+let activeChatUnsubscribe = null;
+
 window.switchTab = async function(tab) {
+    if (activeChatUnsubscribe) {
+        activeChatUnsubscribe();
+        activeChatUnsubscribe = null;
+    }
+
     const container = document.getElementById("dashboard-content");
     const currentUser = auth.currentUser;
     const userDocSnap = await getDoc(doc(db, "users", currentUser.uid));
@@ -338,7 +339,6 @@ window.switchTab = async function(tab) {
                 const data = docSnap.data();
                 if (data.uid === currentUser.uid) return;
                 if (data.blockedUsers && data.blockedUsers.includes(currentUser.uid)) return;
-
                 if (sCountry && data.country !== sCountry) return;
                 if (sInterest && data.interest !== sInterest) return;
 
@@ -422,13 +422,28 @@ window.switchTab = async function(tab) {
                 const bData = buddyDoc.data();
                 if (bData) {
                     const liveDotHtml = bData.isLive ? `<span class="live-dot ml-2" title="Live Now"></span>` : '';
+                    
+                    // Listen live for unread indicators/notifications for each buddy
+                    const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
+                    onSnapshot(msgQuery, (snapshot) => {
+                        let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
+                        let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
+                        
+                        let buddyEl = document.getElementById(`buddy-item-${buddyId}`);
+                        if (buddyEl) {
+                            let badgeContainer = buddyEl.querySelector('.buddy-badge');
+                            if (badgeContainer) badgeContainer.innerHTML = badgeHtml;
+                        }
+                    });
+
                     buddyListContainer.innerHTML += `
-                        <div onclick="openChat('${bData.uid}', '${bData.name}')" class="flex items-center p-3 hover:bg-pink-50 rounded-lg cursor-pointer border-b">
+                        <div id="buddy-item-${buddyId}" onclick="openChat('${bData.uid}', '${bData.name}')" class="flex items-center p-3 hover:bg-pink-50 rounded-lg cursor-pointer border-b">
                             <img src="${bData.profilePic || 'https://via.placeholder.com/150'}" class="w-10 h-10 rounded-full object-cover mr-3">
-                            <div>
+                            <div class="flex-1">
                                 <h4 class="font-semibold text-sm flex items-center">${bData.name} ${liveDotHtml}</h4>
                                 <span class="text-xs text-gray-400">Click to chat</span>
                             </div>
+                            <div class="buddy-badge"></div>
                         </div>
                     `;
                 }
@@ -436,7 +451,7 @@ window.switchTab = async function(tab) {
         });
     }
     else if (tab === 'delete') {
-        if (confirm("Are you sure you want to completely delete your profile? Your email can be reused to rejoin freshly.")) {
+        if (confirm("Are you sure you want to completely delete your profile?")) {
             await deleteDoc(doc(db, "users", currentUser.uid));
             await currentUser.delete();
             alert("Profile deleted successfully.");
@@ -459,6 +474,11 @@ window.respondRequest = async function(reqId, status) {
 };
 
 window.openChat = async function(buddyId, buddyName) {
+    if (activeChatUnsubscribe) {
+        activeChatUnsubscribe();
+        activeChatUnsubscribe = null;
+    }
+
     const container = document.getElementById("chat-window-container");
     container.innerHTML = `
         <div class="flex justify-between items-center border-b pb-3">
@@ -477,7 +497,35 @@ window.openChat = async function(buddyId, buddyName) {
         </div>
     `;
 
-    loadChatMessages(buddyId);
+    // Real-time listener for messages so UI updates smoothly without wiping input box
+    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(30));
+    activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
+        const msgBox = document.getElementById("messages-box");
+        if (!msgBox) return;
+        const currentUser = auth.currentUser;
+        
+        msgBox.innerHTML = "";
+        snapshot.forEach(docSnap => {
+            const m = docSnap.data();
+            if ((m.senderId === currentUser.uid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUser.uid)) {
+                // Mark incoming messages as read
+                if (m.receiverId === currentUser.uid && !m.read) {
+                    updateDoc(doc(db, "messages", docSnap.id), { read: true });
+                }
+
+                let contentHtml = m.type === 'text' ? `<p>${m.content}</p>` : `<a href="${m.content}" download="${m.fileName || 'file'}" class="text-blue-500 underline text-sm">📥 Download ${m.fileName || 'Attachment'}</a>`;
+                if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
+
+                msgBox.innerHTML += `
+                    <div class="flex ${m.senderId === currentUser.uid ? 'justify-end' : 'justify-start'}">
+                        <div class="bg-${m.senderId === currentUser.uid ? 'pink-100 text-gray-800' : 'gray-100'} p-3 rounded-xl max-w-xs">
+                            ${contentHtml}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    });
 };
 
 window.sendTextMessage = async function(buddyId) {
@@ -490,10 +538,10 @@ window.sendTextMessage = async function(buddyId) {
         receiverId: buddyId,
         type: "text",
         content: text,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        read: false
     });
     input.value = "";
-    loadChatMessages(buddyId);
 };
 
 window.sendMediaMessage = async function(buddyId) {
@@ -507,38 +555,13 @@ window.sendMediaMessage = async function(buddyId) {
         type: file.type.includes('image') ? 'image' : 'file',
         fileName: file.name,
         content: base64Data,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        read: false
     });
-    loadChatMessages(buddyId);
 };
 
-async function loadChatMessages(buddyId) {
-    const msgBox = document.getElementById("messages-box");
-    const currentUser = auth.currentUser;
-    
-    const q = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(15));
-    const snap = await getDocs(q);
-    
-    msgBox.innerHTML = "";
-    snap.forEach(docSnap => {
-        const m = docSnap.data();
-        if ((m.senderId === currentUser.uid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUser.uid)) {
-            let contentHtml = m.type === 'text' ? `<p>${m.content}</p>` : `<a href="${m.content}" download="${m.fileName || 'file'}" class="text-blue-500 underline text-sm">📥 Download ${m.fileName || 'Attachment'}</a>`;
-            if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
-
-            msgBox.innerHTML += `
-                <div class="flex ${m.senderId === currentUser.uid ? 'justify-end' : 'justify-start'}">
-                    <div class="bg-${m.senderId === currentUser.uid ? 'pink-100 text-gray-800' : 'gray-100'} p-3 rounded-xl max-w-xs">
-                        ${contentHtml}
-                    </div>
-                </div>
-            `;
-        }
-    });
-}
-
 window.blockBuddy = async function(buddyId) {
-    if (confirm("Are you sure you want to block this user? They won't be able to view your profile.")) {
+    if (confirm("Are you sure you want to block this user?")) {
         const userRef = doc(db, "users", auth.currentUser.uid);
         const userDoc = await getDoc(userRef);
         let blocked = userDoc.data().blockedUsers || [];
@@ -550,13 +573,15 @@ window.blockBuddy = async function(buddyId) {
 };
 
 window.startVideoCall = function(buddyId) {
-    alert("Initiating secure peer-to-peer live video call connection...");
-    window.open(`https://meet.jit.si/mysugarpartner-${auth.currentUser.uid}-${buddyId}`, '_blank');
+    const currentUid = auth.currentUser.uid;
+    // Alphabetically sort user IDs so both users join the exact same unique Jitsi room name
+    const roomUsers = [currentUid, buddyId].sort().join('-');
+    window.open(`https://meet.jit.si/mysugarpartner-${roomUsers}`, '_blank');
 };
 
-// Global Logout Function Handler
 window.handleLogout = async function() {
     try {
+        if (activeChatUnsubscribe) activeChatUnsubscribe();
         await signOut(auth);
         window.location.reload();
     } catch (error) {
