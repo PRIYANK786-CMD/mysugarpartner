@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, 
-    collection, query, where, getDocs, addDoc, orderBy, limit, onSnapshot 
+    collection, query, where, getDocs, addDoc, orderBy, limit, onSnapshot, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Your Firebase Console configuration credentials
@@ -87,7 +87,6 @@ function listenForIncomingCalls(userId) {
             const callerDoc = await getDoc(doc(db, "users", callData.callerId));
             const callerData = callerDoc.data() || { name: "Buddy" };
 
-            // Check if notification modal already exists to prevent duplicates
             if (document.getElementById("incoming-call-modal")) return;
 
             const modalHtml = `
@@ -548,12 +547,22 @@ window.openChat = async function(buddyId, buddyName) {
         activeChatUnsubscribe = null;
     }
 
+    const currentUid = auth.currentUser.uid;
+    const chatId = [currentUid, buddyId].sort().join('_');
+    const chatMetaRef = doc(db, "chatMeta", chatId);
+    const chatMetaSnap = await getDoc(chatMetaRef);
+    const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
+    
+    // Each user has their own clear timestamp
+    const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
+
     const container = document.getElementById("chat-window-container");
     container.innerHTML = `
         <div class="flex justify-between items-center border-b pb-3 mb-2">
             <h3 class="font-bold text-lg">${buddyName}</h3>
-            <div class="space-x-3">
+            <div class="space-x-3 flex items-center">
                 <button onclick="startVideoCall('${buddyId}')" class="bg-pink-600 text-white px-3 py-1 rounded text-sm">📹 Video Call</button>
+                <button onclick="clearChatHistory('${buddyId}')" class="text-gray-500 text-sm hover:underline">Clear Chat</button>
                 <button onclick="blockBuddy('${buddyId}')" class="text-red-500 text-sm hover:underline">Block</button>
             </div>
         </div>
@@ -566,7 +575,6 @@ window.openChat = async function(buddyId, buddyName) {
         </div>
     `;
 
-    // Enter key listener for sending message
     document.getElementById("chat-msg-input").addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -574,17 +582,19 @@ window.openChat = async function(buddyId, buddyName) {
         }
     });
 
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(50));
+    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(100));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
         if (!msgBox) return;
-        const currentUser = auth.currentUser;
         
         msgBox.innerHTML = "";
         snapshot.forEach(docSnap => {
             const m = docSnap.data();
-            if ((m.senderId === currentUser.uid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUser.uid)) {
-                if (m.receiverId === currentUser.uid && !m.read) {
+            // Check if message is part of current conversation and sent AFTER this user's clear timestamp
+            const isMyConversation = (m.senderId === currentUid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUid);
+            
+            if (isMyConversation && m.timestamp > myClearTime) {
+                if (m.receiverId === currentUid && !m.read) {
                     updateDoc(doc(db, "messages", docSnap.id), { read: true });
                 }
 
@@ -592,8 +602,8 @@ window.openChat = async function(buddyId, buddyName) {
                 if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
 
                 msgBox.innerHTML += `
-                    <div class="flex ${m.senderId === currentUser.uid ? 'justify-end' : 'justify-start'} w-full">
-                        <div class="bg-${m.senderId === currentUser.uid ? 'pink-100 text-gray-800' : 'gray-100'} p-3 rounded-xl max-w-xs">
+                    <div class="flex ${m.senderId === currentUid ? 'justify-end' : 'justify-start'} w-full">
+                        <div class="bg-${m.senderId === currentUid ? 'pink-100 text-gray-800' : 'gray-100'} p-3 rounded-xl max-w-xs">
                             ${contentHtml}
                         </div>
                     </div>
@@ -602,6 +612,22 @@ window.openChat = async function(buddyId, buddyName) {
         });
         msgBox.scrollTop = msgBox.scrollHeight;
     });
+};
+
+window.clearChatHistory = async function(buddyId) {
+    if (confirm("Are you sure you want to clear your chat history? This will only remove messages from your view.")) {
+        const currentUid = auth.currentUser.uid;
+        const chatId = [currentUid, buddyId].sort().join('_');
+        const chatMetaRef = doc(db, "chatMeta", chatId);
+        
+        // Update the timestamp so only messages after right now appear for this user
+        await setDoc(chatMetaRef, {
+            [`cleared_${currentUid}`]: Date.now()
+        }, { merge: true });
+
+        // Reload the chat window to reflect empty screen immediately
+        window.openChat(buddyId, document.querySelector('#chat-window-container h3').innerText);
+    }
 };
 
 window.sendTextMessage = async function(buddyId) {
@@ -658,7 +684,6 @@ window.startVideoCall = async function(buddyId) {
     const roomUsers = [currentUid, buddyId].sort().join('-');
     const roomUrl = `https://meet.jit.si/mysugarpartner-${roomUsers}`;
 
-    // Create a call signal record in Firestore
     const callRef = doc(collection(db, "videoCalls"));
     await setDoc(callRef, {
         callerId: currentUid,
@@ -670,7 +695,6 @@ window.startVideoCall = async function(buddyId) {
 
     alert("Calling buddy... Waiting for them to answer.");
 
-    // Listen for response
     const unsubscribe = onSnapshot(callRef, (docSnap) => {
         const data = docSnap.data();
         if (data.status === 'accepted') {
