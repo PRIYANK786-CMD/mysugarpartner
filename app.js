@@ -139,7 +139,7 @@ function renderAuthView() {
     appContainer.innerHTML = `
         <div class="flex flex-col items-center justify-between flex-1 px-4 py-12 min-h-screen">
             <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
-                <h1 class="text-4xl font-bold text-pink-600 mb-2">mysugarpartner.love ❤️</h1>
+                <h1 class="text-4xl font-bold text-pink-600 mb-2">mysugarpartner.in ❤️</h1>
                 <p class="text-gray-600 mb-8">Connecting Type 1 Diabetic Hearts Worldwide</p>
                 <div class="bg-white p-8 rounded-2xl shadow-xl w-full">
                     <h2 class="text-2xl font-bold mb-6 text-gray-700" id="form-title">Welcome Back</h2>
