@@ -139,7 +139,7 @@ function renderPaymentLockView(user) {
 
 function initiateRazorpayPayment(user) {
     const options = {
-        "key": "rzp_test_TlHrb0aoNcal6e", // Your Razorpay Test Key ID
+        "key": "rzp_test_TlHrb0aoNcaI6e", // Your Razorpay Test Key ID
         "amount": 19900, // ₹199 in paise (199 * 100)
         "currency": "INR",
         "name": "mysugarpartner.in",
