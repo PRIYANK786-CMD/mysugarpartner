@@ -136,16 +136,34 @@ function renderPaymentLockView(user) {
         initiateRazorpayPayment(user);
     });
 }
+async function initiateRazorpayPayment(user) {
+    let amountInPaise = 19900; // Default: ₹199 for Indian users (199 * 100 paise)
+    let displayCurrency = "INR";
+    let descriptionText = "1 Year Access Membership (Non-Refundable)";
 
-function initiateRazorpayPayment(user) {
+    try {
+        // Automatically detect user's country via IP lookup
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        
+        // If user is outside India, change price to $10 USD
+        if (data.country_code && data.country_code !== 'IN') {
+            amountInPaise = 100000; // $10 USD in cents (1000 cents * 100)
+            displayCurrency = "USD";
+            descriptionText = "1 Year International Membership ($10 USD)";
+        }
+    } catch (error) {
+        console.log("Could not detect location, defaulting to ₹199 INR.");
+    }
+
     const options = {
-        "key": "rzp_test_TlHrb0aoNcaI6e", // Your Razorpay Test Key ID
-        "amount": 19900, // ₹199 in paise (199 * 100)
-        "currency": "INR",
+        "key": "rzp_test_TlHrb0aoNcal6e", // Replace with your live key later
+        "amount": amountInPaise, // Dynamic amount (₹199 or $10 USD)
+        "currency": displayCurrency, // Dynamic currency (INR or USD)
         "name": "mysugarpartner.in",
-        "description": "1 Year Access Membership (Non-Refundable)",
+        "description": descriptionText,
         "handler": async function (response) {
-            // Calculate 365 days from now in milliseconds
+            // Calculate 365 days in milliseconds
             const oneYearMillis = 365 * 24 * 60 * 60 * 1000;
             const expiryTime = Date.now() + oneYearMillis;
 
@@ -154,7 +172,9 @@ function initiateRazorpayPayment(user) {
                 hasPaid: true,
                 razorpayPaymentId: response.razorpay_payment_id,
                 subscriptionDate: Date.now(),
-                subscriptionExpiry: expiryTime
+                subscriptionExpiry: expiryTime,
+                currencyPaid: displayCurrency,
+                amountPaid: amountInPaise / 100
             });
 
             alert("Payment successful! Welcome to mysugarpartner.in ❤️");
