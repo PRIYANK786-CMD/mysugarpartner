@@ -68,7 +68,7 @@ const rtcConfig = {
     ]
 };
 
-// Router state handler
+// Router state handler with ₹199 Payment Gatekeeper
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         if (!user.emailVerified) {
@@ -78,8 +78,18 @@ onAuthStateChanged(auth, async (user) => {
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 renderProfileCreationView(user);
             } else {
-                renderMainDashboard(user);
-                listenForIncomingCalls(user.uid);
+                const userData = userDoc.data();
+                const now = Date.now();
+                const expiry = userData.subscriptionExpiry || 0;
+
+                // Check if user has active 1-year paid subscription (365 days)
+                if (userData.hasPaid && now < expiry) {
+                    renderMainDashboard(user);
+                    listenForIncomingCalls(user.uid);
+                } else {
+                    // Lock out and force payment screen
+                    renderPaymentLockView(user);
+                }
             }
         }
     } else {
@@ -87,7 +97,80 @@ onAuthStateChanged(auth, async (user) => {
         renderAuthView();
     }
 });
+function renderPaymentLockView(user) {
+    appContainer.innerHTML = `
+        <div class="flex flex-col items-center justify-between flex-1 p-6 text-center min-h-screen bg-pink-50">
+            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-lg mx-auto">
+                <div class="bg-white p-8 rounded-2xl shadow-xl w-full border border-pink-100">
+                    <h2 class="text-2xl font-bold text-pink-600 mb-3">🔒 Annual Membership Required</h2>
+                    <p class="text-gray-600 mb-4 text-sm">
+                        To access global matchmaking, secure messaging, and video calls on <b>mysugarpartner.in</b>, an annual subscription fee of <b>₹199</b> is required.
+                    </p>
+                    
+                    <div class="bg-gray-50 p-4 rounded-xl text-left text-xs text-gray-500 mb-6 space-y-2 border">
+                        <p><b>Terms & Conditions:</b></p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>Access is valid for <b>1 Year (365 Days)</b> from the date of payment.</li>
+                            <li><b>Strictly Non-Refundable:</b> All payments made are final under all circumstances.</li>
+                            <li>If the website closes, terminates operations, or updates services, fees remain non-refundable.</li>
+                            <li><b>Account Deletion Policy:</b> If you delete your profile and re-register using the same email address, a new ₹199 payment will be required.</li>
+                        </ul>
+                    </div>
 
+                    <button id="pay-now-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition shadow-md">
+                        Pay ₹199 & Unlock Access
+                    </button>
+                    
+                    <div class="mt-4">
+                        <button onclick="handleLogout()" class="text-gray-500 text-xs hover:underline">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+            <footer class="text-center text-xs text-gray-500 mt-8 py-4 border-t w-full">
+                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
+            </footer>
+        </div>
+    `;
+
+    document.getElementById("pay-now-btn").addEventListener("click", () => {
+        initiateRazorpayPayment(user);
+    });
+}
+
+function initiateRazorpayPayment(user) {
+    const options = {
+        "key": "rzp_test_TlHrb0aoNcal6e", // Your Razorpay Test Key ID
+        "amount": 19900, // ₹199 in paise (199 * 100)
+        "currency": "INR",
+        "name": "mysugarpartner.in",
+        "description": "1 Year Access Membership (Non-Refundable)",
+        "handler": async function (response) {
+            // Calculate 365 days from now in milliseconds
+            const oneYearMillis = 365 * 24 * 60 * 60 * 1000;
+            const expiryTime = Date.now() + oneYearMillis;
+
+            // Save payment details and expiry to user's Firestore document
+            await updateDoc(doc(db, "users", user.uid), {
+                hasPaid: true,
+                razorpayPaymentId: response.razorpay_payment_id,
+                subscriptionDate: Date.now(),
+                subscriptionExpiry: expiryTime
+            });
+
+            alert("Payment successful! Welcome to mysugarpartner.in ❤️");
+            window.location.reload();
+        },
+        "prefill": {
+            "email": user.email
+        },
+        "theme": {
+            "color": "#db2777" // Tailwind pink-600 color
+        }
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+}
 function listenForIncomingCalls(userId) {
     if (globalCallUnsubscribe) globalCallUnsubscribe();
 
