@@ -157,7 +157,7 @@ async function initiateRazorpayPayment(user) {
     }
 
     const options = {
-        "key": "rzp_test_TlHrb0aoNcal6e", // Replace with your live key later
+        "key": "rzp_test_TlHrb0aoNcaI6e", // Replace with your live key later
         "amount": amountInPaise, // Dynamic amount (₹199 or $10 USD)
         "currency": displayCurrency, // Dynamic currency (INR or USD)
         "name": "mysugarpartner.in",
