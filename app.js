@@ -85,20 +85,20 @@ onAuthStateChanged(auth, async (user) => {
         } else {
             const userDoc = await getDoc(doc(db, "users", user.uid));
             
-            // If user hasn't created a profile yet, let them create it
+            // If a user hasn't completed their profile onboarding yet, let them do that first
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 document.getElementById("payment-modal-overlay")?.classList.add("hidden");
                 renderProfileCreationView(user);
             } else {
                 const userData = userDoc.data();
                 
-                // Check if user is Admin
+                // Check if user is the Admin
                 const isAdmin = (user.uid === ADMIN_UID);
                 
-                // Check if user has explicitly paid and been approved
+                // Check if user has explicitly paid and been approved by admin
                 const hasValidPayment = (userData.hasPaid === true && userData.paymentStatus === "APPROVED");
 
-                // Render dashboard first so the layout exists
+                // Render the dashboard layout in the background
                 renderMainDashboard(user);
                 listenForIncomingCalls(user.uid);
 
@@ -109,7 +109,7 @@ onAuthStateChanged(auth, async (user) => {
                         loadPendingPayments();
                     }
                 } else {
-                    // BLOCK ACCESS: Force the Kotak 811 payment modal overlay to show up
+                    // BLOCK ACCESS: Force the Kotak 811 payment modal overlay to pop up for everyone else
                     document.getElementById("payment-modal-overlay")?.classList.remove("hidden");
                 }
             }
@@ -307,8 +307,8 @@ function renderProfileCreationView(user) {
             profileCompleted: true,
             isLive: true,
             blockedUsers: [],
-            hasPaid: user.uid === ADMIN_UID ? true : false,
-            paymentStatus: user.uid === ADMIN_UID ? "APPROVED" : "UNPAID"
+            hasPaid: user.uid === ADMIN_UID ? true : false,       // <-- Admin is true, others are false
+            paymentStatus: user.uid === ADMIN_UID ? "APPROVED" : "UNPAID" // <-- Admin is approved, others are unpaid
         };
 
         await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
