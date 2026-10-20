@@ -75,7 +75,7 @@ const rtcConfig = {
 
 
 // ============================================================================
-// SECTION 3: ROUTER & AUTH STATE HANDLER (WITH STRICT PAYMENT ENFORCEMENT)
+// SECTION 3: ROUTER & AUTH STATE HANDLER (STRICT PAYMENT ENFORCEMENT)
 // ============================================================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -92,24 +92,25 @@ onAuthStateChanged(auth, async (user) => {
             } else {
                 const userData = userDoc.data();
                 
-                // STRICT PAYMENT GATEKEEPER CHECK:
-                // Only allow access if the user is the Admin OR has explicit payment approval
-                if (user.uid === ADMIN_UID || userData.hasPaid === true) {
+                // Check if user is Admin
+                const isAdmin = (user.uid === ADMIN_UID);
+                
+                // Check if user has explicitly paid and been approved
+                const hasValidPayment = (userData.hasPaid === true && userData.paymentStatus === "APPROVED");
+
+                // Render dashboard first so the layout exists
+                renderMainDashboard(user);
+                listenForIncomingCalls(user.uid);
+
+                if (isAdmin || hasValidPayment) {
+                    // ALLOW ACCESS: Hide the payment modal completely
                     document.getElementById("payment-modal-overlay")?.classList.add("hidden");
-                    renderMainDashboard(user);
-                    listenForIncomingCalls(user.uid);
-                    
-                    if (user.uid === ADMIN_UID) {
+                    if (isAdmin) {
                         loadPendingPayments();
                     }
                 } else {
-                    // FORCE PAYMENT MODAL: Hide dashboard content and show payment overlay
+                    // BLOCK ACCESS: Force the Kotak 811 payment modal overlay to show up
                     document.getElementById("payment-modal-overlay")?.classList.remove("hidden");
-                    
-                    // Render dashboard underneath so the admin panel or background structure exists, 
-                    // but the payment modal blocks them completely until paid/approved.
-                    renderMainDashboard(user);
-                    listenForIncomingCalls(user.uid);
                 }
             }
         }
@@ -119,7 +120,6 @@ onAuthStateChanged(auth, async (user) => {
         renderAuthView();
     }
 });
-
 
 // ============================================================================
 // SECTION 4: INCOMING VIDEO CALL LISTENER & HANDLERS
