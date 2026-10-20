@@ -68,7 +68,7 @@ const rtcConfig = {
     ]
 };
 
-// Router state handler with ₹199 Payment Gatekeeper
+// Router state handler
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         if (!user.emailVerified) {
@@ -78,18 +78,8 @@ onAuthStateChanged(auth, async (user) => {
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 renderProfileCreationView(user);
             } else {
-                const userData = userDoc.data();
-                const now = Date.now();
-                const expiry = userData.subscriptionExpiry || 0;
-
-                // Check if user has active 1-year paid subscription (365 days)
-                if (userData.hasPaid && now < expiry) {
-                    renderMainDashboard(user);
-                    listenForIncomingCalls(user.uid);
-                } else {
-                    // Lock out and force payment screen
-                    renderPaymentLockView(user);
-                }
+                renderMainDashboard(user);
+                listenForIncomingCalls(user.uid);
             }
         }
     } else {
@@ -97,100 +87,7 @@ onAuthStateChanged(auth, async (user) => {
         renderAuthView();
     }
 });
-function renderPaymentLockView(user) {
-    appContainer.innerHTML = `
-        <div class="flex flex-col items-center justify-between flex-1 p-6 text-center min-h-screen bg-pink-50">
-            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-lg mx-auto">
-                <div class="bg-white p-8 rounded-2xl shadow-xl w-full border border-pink-100">
-                    <h2 class="text-2xl font-bold text-pink-600 mb-3">🔒 Annual Membership Required</h2>
-                    <p class="text-gray-600 mb-4 text-sm">
-                        To access global matchmaking, secure messaging, and video calls on <b>mysugarpartner.in</b>, an annual subscription fee of <b>₹199</b> is required.
-                    </p>
-                    
-                    <div class="bg-gray-50 p-4 rounded-xl text-left text-xs text-gray-500 mb-6 space-y-2 border">
-                        <p><b>Terms & Conditions:</b></p>
-                        <ul class="list-disc pl-4 space-y-1">
-                            <li>Access is valid for <b>1 Year (365 Days)</b> from the date of payment.</li>
-                            <li><b>Strictly Non-Refundable:</b> All payments made are final under all circumstances.</li>
-                            <li>If the website closes, terminates operations, or updates services, fees remain non-refundable.</li>
-                            <li><b>Account Deletion Policy:</b> If you delete your profile and re-register using the same email address, a new ₹199 payment will be required.</li>
-                        </ul>
-                    </div>
 
-                    <button id="pay-now-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 transition shadow-md">
-                        Pay ₹199 & Unlock Access
-                    </button>
-                    
-                    <div class="mt-4">
-                        <button onclick="handleLogout()" class="text-gray-500 text-xs hover:underline">Sign Out</button>
-                    </div>
-                </div>
-            </div>
-            <footer class="text-center text-xs text-gray-500 mt-8 py-4 border-t w-full">
-                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
-            </footer>
-        </div>
-    `;
-
-    document.getElementById("pay-now-btn").addEventListener("click", () => {
-        initiateRazorpayPayment(user);
-    });
-}
-async function initiateRazorpayPayment(user) {
-    let amountInPaise = 19900; // Default: ₹199 for Indian users (199 * 100 paise)
-    let displayCurrency = "INR";
-    let descriptionText = "1 Year Access Membership (Non-Refundable)";
-
-    try {
-        // Automatically detect user's country via IP lookup
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        
-        // If user is outside India, change price to $10 USD
-        if (data.country_code && data.country_code !== 'IN') {
-            amountInPaise = 100000; // $10 USD in cents (1000 cents * 100)
-            displayCurrency = "USD";
-            descriptionText = "1 Year International Membership ($10 USD)";
-        }
-    } catch (error) {
-        console.log("Could not detect location, defaulting to ₹199 INR.");
-    }
-
-    const options = {
-        "key": "rzp_test_TlHrb0aoNcaI6e", // Replace with your live key later
-        "amount": amountInPaise, // Dynamic amount (₹199 or $10 USD)
-        "currency": displayCurrency, // Dynamic currency (INR or USD)
-        "name": "mysugarpartner.in",
-        "description": descriptionText,
-        "handler": async function (response) {
-            // Calculate 365 days in milliseconds
-            const oneYearMillis = 365 * 24 * 60 * 60 * 1000;
-            const expiryTime = Date.now() + oneYearMillis;
-
-            // Save payment details and expiry to user's Firestore document
-            await updateDoc(doc(db, "users", user.uid), {
-                hasPaid: true,
-                razorpayPaymentId: response.razorpay_payment_id,
-                subscriptionDate: Date.now(),
-                subscriptionExpiry: expiryTime,
-                currencyPaid: displayCurrency,
-                amountPaid: amountInPaise / 100
-            });
-
-            alert("Payment successful! Welcome to mysugarpartner.in ❤️");
-            window.location.reload();
-        },
-        "prefill": {
-            "email": user.email
-        },
-        "theme": {
-            "color": "#db2777" // Tailwind pink-600 color
-        }
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.open();
-}
 function listenForIncomingCalls(userId) {
     if (globalCallUnsubscribe) globalCallUnsubscribe();
 
