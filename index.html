@@ -15,7 +15,22 @@
         <!-- Dynamic views will be injected here via app.js -->
     </div>
 
-    <!-- Payment Verification Modal (Used when user is unpaid or pending verification) -->
+    <!-- Admin Dashboard Container (Main Page Section) -->
+    <div id="admin-panel" class="hidden max-w-4xl mx-auto p-6 bg-white rounded-2xl shadow-md my-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Admin Payment Approvals 🛡️</h1>
+            <button onclick="loadPendingPayments()" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition">
+                🔄 Refresh List
+            </button>
+        </div>
+
+        <div id="pending-utr-list" class="space-y-4">
+            <!-- Pending payments will render dynamically here -->
+            <p class="text-gray-500 text-sm text-center py-4">Loading pending payments...</p>
+        </div>
+    </div>
+
+    <!-- Payment Verification Modal (User Payment Overlay) -->
     <div id="payment-modal-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
             <h2 class="text-2xl font-bold text-gray-800">Unlock Full Access ❤️</h2>

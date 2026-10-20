@@ -902,3 +902,97 @@ window.handleLogout = async function() {
         alert(error.message);
     }
 };
+// ==========================================
+// ADMIN PAYMENT APPROVAL PANEL LOGIC
+// ==========================================
+
+// Replace with your actual Admin Firebase Auth UID (from Firebase Console -> Authentication)
+const ADMIN_UID = "ZNZI6i0t5gNxWSt9mD1GpNBwlEk1"; 
+
+// 1. Fetch and Display All Users with "PENDING_VERIFICATION"
+export async function loadPendingPayments() {
+    const user = auth.currentUser;
+    
+    // Safety check: ensure only the admin can access this panel
+    if (!user || user.uid !== ADMIN_UID) {
+        document.getElementById("admin-panel")?.classList.add("hidden");
+        return;
+    }
+
+    document.getElementById("admin-panel")?.classList.remove("hidden");
+    const container = document.getElementById("pending-utr-list");
+    container.innerHTML = `<p class="text-gray-500 text-sm text-center py-4">Checking for submissions...</p>`;
+
+    try {
+        // Query users collection where paymentStatus is PENDING_VERIFICATION
+        const q = query(collection(db, "users"), where("paymentStatus", "==", "PENDING_VERIFICATION"));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            container.innerHTML = `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-xl">No pending payment approvals right now. 👍</div>`;
+            return;
+        }
+
+        let html = "";
+        querySnapshot.forEach((userDoc) => {
+            const data = userDoc.data();
+            const submittedDate = data.paymentSubmittedAt 
+                ? new Date(data.paymentSubmittedAt).toLocaleString() 
+                : "Unknown";
+
+            html += `
+                <div class="p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pink-50/50 border-pink-200">
+                    <div class="space-y-1">
+                        <p class="font-bold text-gray-800">${data.name || "User"} (${data.email || "No email"})</p>
+                        <p class="text-xs text-gray-600">
+                            UTR Number: <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-300 font-bold text-pink-600">${data.utrNumber || "N/A"}</span>
+                        </p>
+                        <p class="text-xs text-gray-400">Submitted: ${submittedDate}</p>
+                    </div>
+                    <button 
+                        onclick="approveUtrPayment('${userDoc.id}')"
+                        class="bg-green-600 hover:bg-green-700 text-white font-semibold text-sm px-4 py-2 rounded-lg transition shadow-sm self-start md:self-center">
+                        ✅ Approve 1-Year Access
+                    </button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    } catch (error) {
+        console.error("Error loading pending payments:", error);
+        container.innerHTML = `<p class="text-red-500 text-sm text-center">Failed to load pending payments.</p>`;
+    }
+}
+
+// 2. One-Click Approval Function
+window.approveUtrPayment = async function(targetUserId) {
+    if (!confirm("Are you sure you verified this UTR in your Kotak 811 bank account?")) {
+        return;
+    }
+
+    const now = Date.now();
+    const oneYearMillis = 365 * 24 * 60 * 60 * 1000;
+
+    try {
+        // Update user's document in Firestore to immediately activate 1-year access
+        await updateDoc(doc(db, "users", targetUserId), {
+            hasPaid: true,
+            paymentStatus: "APPROVED",
+            subscriptionDate: now,
+            subscriptionExpiry: now + oneYearMillis
+        });
+
+        alert("User approved successfully! 1-year access granted.");
+        loadPendingPayments(); // Refresh list
+    } catch (error) {
+        console.error("Error approving user:", error);
+        alert("Failed to approve payment. Check console for details.");
+    }
+};
+
+// 3. Auto-trigger loadPendingPayments when auth state changes or page loads
+document.addEventListener("DOMContentLoaded", () => {
+    // If you have an auth state listener elsewhere, you can also call loadPendingPayments() 
+    // once the admin successfully signs in.
+});
