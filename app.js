@@ -1,4 +1,6 @@
-// Import Firebase modules from CDN (Modular SDK v10)
+// ============================================================================
+// SECTION 1: FIREBASE INITIALIZATION & CONFIGURATION
+// ============================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
@@ -9,7 +11,6 @@ import {
     collection, query, where, getDocs, addDoc, orderBy, limit, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Your Firebase Console configuration credentials
 const firebaseConfig = {
     apiKey: "AIzaSyCuRvH-41ts0fPKl3s2jlRMcRWkFpwOgK8",
     authDomain: "mysugarpartner-ebeaf.firebaseapp.com",
@@ -26,8 +27,12 @@ const db = getFirestore(app);
 
 window.auth = auth;
 const appContainer = document.getElementById("app");
+const ADMIN_UID = "ZNZI6i0t5gNxWSt9mD1GpNBwlEk1";
 
-// Comprehensive A-to-Z Country List
+
+// ============================================================================
+// SECTION 2: GLOBAL CONSTANTS & WEBRTC STATES
+// ============================================================================
 const countries = [
     "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
     "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
@@ -68,26 +73,50 @@ const rtcConfig = {
     ]
 };
 
-// Router state handler
+
+// ============================================================================
+// SECTION 3: ROUTER & AUTH STATE HANDLER (WITH PAYMENT ENFORCEMENT)
+// ============================================================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         if (!user.emailVerified) {
+            document.getElementById("payment-modal-overlay")?.classList.add("hidden");
             renderVerificationPendingView(user);
         } else {
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
+                document.getElementById("payment-modal-overlay")?.classList.add("hidden");
                 renderProfileCreationView(user);
             } else {
-                renderMainDashboard(user);
-                listenForIncomingCalls(user.uid);
+                const userData = userDoc.data();
+                
+                // Enforce Payment Gatekeeper: Admin or approved users bypass modal
+                if (user.uid === ADMIN_UID || userData.hasPaid === true) {
+                    document.getElementById("payment-modal-overlay")?.classList.add("hidden");
+                    renderMainDashboard(user);
+                    listenForIncomingCalls(user.uid);
+                    if (user.uid === ADMIN_UID) {
+                        loadPendingPayments();
+                    }
+                } else {
+                    // Unpaid new or old users are forced to see the payment modal
+                    document.getElementById("payment-modal-overlay")?.classList.remove("hidden");
+                    renderMainDashboard(user);
+                    listenForIncomingCalls(user.uid);
+                }
             }
         }
     } else {
+        document.getElementById("payment-modal-overlay")?.classList.add("hidden");
         if (globalCallUnsubscribe) globalCallUnsubscribe();
         renderAuthView();
     }
 });
 
+
+// ============================================================================
+// SECTION 4: INCOMING VIDEO CALL LISTENER & HANDLERS
+// ============================================================================
 function listenForIncomingCalls(userId) {
     if (globalCallUnsubscribe) globalCallUnsubscribe();
 
@@ -122,10 +151,9 @@ window.acceptInAppCall = async function(callId, callerId) {
     const modal = document.getElementById("incoming-call-modal");
     if (modal) modal.remove();
 
-    // Switch to chat tab with the caller so video screen appears instantly
     window.switchTab('chat');
     setTimeout(() => {
-        window.openChat(callerId, "Buddy", true); // auto-open video stream view
+        window.openChat(callerId, "Buddy", true);
     }, 500);
 };
 
@@ -135,6 +163,10 @@ window.rejectInAppCall = async function(callId) {
     if (modal) modal.remove();
 };
 
+
+// ============================================================================
+// SECTION 5: AUTHENTICATION & VERIFICATION VIEWS
+// ============================================================================
 function renderAuthView() {
     appContainer.innerHTML = `
         <div class="flex flex-col items-center justify-between flex-1 px-4 py-12 min-h-screen">
@@ -212,6 +244,11 @@ function renderVerificationPendingView(user) {
         </div>
     `;
 }
+
+
+// ============================================================================
+// SECTION 6: PROFILE CREATION & UTILITIES
+// ============================================================================
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
     appContainer.innerHTML = `
@@ -262,12 +299,13 @@ function renderProfileCreationView(user) {
             profilePic: imageUrl,
             profileCompleted: true,
             isLive: true,
-            blockedUsers: []
+            blockedUsers: [],
+            hasPaid: user.uid === ADMIN_UID ? true : false,
+            paymentStatus: user.uid === ADMIN_UID ? "APPROVED" : "UNPAID"
         };
 
         await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
-        renderMainDashboard(user);
-        listenForIncomingCalls(user.uid);
+        window.location.reload();
     });
 }
 
@@ -293,6 +331,10 @@ function convertImageToBase64(file) {
     });
 }
 
+
+// ============================================================================
+// SECTION 7: MAIN DASHBOARD & TAB ROUTER
+// ============================================================================
 function renderMainDashboard(user) {
     appContainer.innerHTML = `
         <div class="flex flex-col min-h-screen justify-between">
@@ -556,6 +598,10 @@ window.respondRequest = async function(reqId, status) {
     window.switchTab('requests');
 };
 
+
+// ============================================================================
+// SECTION 8: CHAT & WEBRTC VIDEO CALL LOGIC
+// ============================================================================
 window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     if (activeChatUnsubscribe) {
         activeChatUnsubscribe();
@@ -858,11 +904,11 @@ window.handleLogout = async function() {
         alert(error.message);
     }
 };
-// ==========================================
-// MANUAL UPI PAYMENT VERIFICATION LOGIC
-// ==========================================
 
-// 1. Function to handle UTR submission
+
+// ============================================================================
+// SECTION 9: MANUAL UPI PAYMENT VERIFICATION LOGIC
+// ============================================================================
 export async function submitManualUpiPayment() {
     const user = auth.currentUser;
     if (!user) {
@@ -872,14 +918,12 @@ export async function submitManualUpiPayment() {
 
     const utrInput = document.getElementById("utr-input")?.value.trim();
 
-    // Validate 12-digit numeric UTR format
     if (!utrInput || utrInput.length !== 12 || isNaN(utrInput)) {
         alert("Please enter a valid 12-digit UPI Transaction Reference / UTR Number.");
         return;
     }
 
     try {
-        // Update user document in Cloud Firestore with pending status
         await updateDoc(doc(db, "users", user.uid), {
             paymentSubmitted: true,
             utrNumber: utrInput,
@@ -895,7 +939,6 @@ export async function submitManualUpiPayment() {
     }
 }
 
-// 2. Attach Event Listener to the HTML button
 document.addEventListener("DOMContentLoaded", () => {
     const submitBtn = document.getElementById("submit-utr-btn");
     if (submitBtn) {
@@ -904,17 +947,12 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-// ==========================================
-// ADMIN PAYMENT APPROVAL PANEL LOGIC
-// ==========================================
-
-const ADMIN_UID = "ZNZI6i0t5gNxWSt9mD1GpNBwlEk1"; 
-
-// 3. Fetch and Display All Users with "PENDING_VERIFICATION"
+// ============================================================================
+// SECTION 10: ADMIN PAYMENT APPROVAL PANEL LOGIC
+// ============================================================================
 export async function loadPendingPayments() {
     const user = auth.currentUser;
     
-    // Safety check: ensure only the admin can access this panel
     if (!user || user.uid !== ADMIN_UID) {
         document.getElementById("admin-panel")?.classList.add("hidden");
         return;
@@ -925,7 +963,6 @@ export async function loadPendingPayments() {
     container.innerHTML = `<p class="text-gray-500 text-sm text-center py-4">Checking for submissions...</p>`;
 
     try {
-        // Query users collection where paymentStatus is PENDING_VERIFICATION
         const q = query(collection(db, "users"), where("paymentStatus", "==", "PENDING_VERIFICATION"));
         const querySnapshot = await getDocs(q);
 
@@ -966,7 +1003,6 @@ export async function loadPendingPayments() {
     }
 }
 
-// 4. One-Click Approval Function
 window.approveUtrPayment = async function(targetUserId) {
     if (!confirm("Are you sure you verified this UTR in your Kotak 811 bank account?")) {
         return;
@@ -976,7 +1012,6 @@ window.approveUtrPayment = async function(targetUserId) {
     const oneYearMillis = 365 * 24 * 60 * 60 * 1000;
 
     try {
-        // Update user's document in Firestore to immediately activate 1-year access
         await updateDoc(doc(db, "users", targetUserId), {
             hasPaid: true,
             paymentStatus: "APPROVED",
@@ -985,7 +1020,7 @@ window.approveUtrPayment = async function(targetUserId) {
         });
 
         alert("User approved successfully! 1-year access granted.");
-        loadPendingPayments(); // Refresh list
+        loadPendingPayments();
     } catch (error) {
         console.error("Error approving user:", error);
         alert("Failed to approve payment. Check console for details.");
