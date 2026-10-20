@@ -68,18 +68,25 @@ const rtcConfig = {
     ]
 };
 
-// Router state handler
+// Router state handler with Manual UPI Payment Check
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         if (!user.emailVerified) {
             renderVerificationPendingView(user);
         } else {
             const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (!userDoc.exists() || !userDoc.data().profileCompleted) {
+            if (!userDoc.exists() || !userDoc.profileCompleted) {
                 renderProfileCreationView(user);
             } else {
-                renderMainDashboard(user);
-                listenForIncomingCalls(user.uid);
+                const userData = userDoc.data();
+                
+                // Check if user has paid or if payment is pending verification
+                if (!userData.hasPaid) {
+                    renderManualPaymentView(user, userData.paymentStatus);
+                } else {
+                    renderMainDashboard(user);
+                    listenForIncomingCalls(user.uid);
+                }
             }
         }
     } else {
@@ -212,6 +219,89 @@ function renderVerificationPendingView(user) {
         </div>
     `;
 }
+function renderManualPaymentView(user, paymentStatus) {
+    let statusMessage = "";
+    let isPending = paymentStatus === "PENDING_VERIFICATION";
+
+    if (isPending) {
+        statusMessage = `
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left">
+                <p class="text-xs text-yellow-700 font-semibold">Verification Pending</p>
+                <p class="text-xs text-yellow-600 mt-1">Your 12-digit UTR has been submitted. Our admin team will verify the payment and approve your access shortly.</p>
+            </div>
+        `;
+    }
+
+    appContainer.innerHTML = `
+        <div class="flex flex-col items-center justify-between flex-1 p-6 text-center min-h-screen">
+            <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
+                <div class="bg-white p-8 rounded-2xl shadow-xl w-full">
+                    <h2 class="text-2xl font-bold text-pink-600 mb-2">Unlock Full Access ❤️</h2>
+                    <p class="text-sm text-gray-600 mb-4">Scan the QR code below using Google Pay, PhonePe, or Paytm to pay <b>₹199</b> (domestic) or <b>$10 USD</b> (international).</p>
+                    
+                    <!-- Business UPI QR Code Image -->
+                    <div class="flex justify-center my-4">
+                        <img src="upi-qr.png" alt="UPI QR Code" class="w-48 h-48 object-contain border p-2 rounded-xl border-pink-300 shadow-sm mx-auto" />
+                    </div>
+
+                    <p class="text-xs text-gray-500 font-medium mb-4">UPI ID: <span class="font-bold text-pink-600">5005@kotakbank</span></p>
+
+                    ${statusMessage}
+
+                    <div class="space-y-3 text-left mb-4">
+                        <label class="block text-xs font-semibold text-gray-700">Enter 12-Digit UPI Reference / UTR Number:</label>
+                        <input 
+                            type="text" 
+                            id="utr-input" 
+                            maxlength="12" 
+                            placeholder="e.g. 4289XXXXXXXX" 
+                            class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm font-mono tracking-widest text-center" 
+                        />
+                    </div>
+
+                    <button 
+                        onclick="submitManualUpiPayment()" 
+                        class="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md mb-3">
+                        Submit Payment Verification
+                    </button>
+
+                    <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Logout / Switch Account</button>
+                </div>
+            </div>
+            <footer class="text-center text-xs text-gray-500 mt-8 py-4 border-t w-full">
+                Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
+            </footer>
+        </div>
+    `;
+}
+
+window.submitManualUpiPayment = async function() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const utrInput = document.getElementById("utr-input").value.trim();
+
+    // Validate 12-digit numeric UTR
+    if (!utrInput || utrInput.length !== 12 || isNaN(utrInput)) {
+        alert("Please enter a valid 12-digit UPI Transaction Reference / UTR Number.");
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "users", user.uid), {
+            paymentSubmitted: true,
+            utrNumber: utrInput,
+            paymentStatus: "PENDING_VERIFICATION",
+            paymentSubmittedAt: Date.now()
+        });
+
+        alert("Thank you! Your UTR number has been submitted. Our team will verify the payment and activate your 1-year access shortly.");
+        window.location.reload();
+    } catch (error) {
+        console.error("Error submitting UTR:", error);
+        alert("Could not submit payment info. Please try again.");
+    }
+};
 
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
