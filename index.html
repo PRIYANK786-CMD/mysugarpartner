@@ -6,8 +6,6 @@
     <title>mysugarpartner.in ❤️ - Connect Globally</title>
     <!-- Tailwind CSS CDN for high-performance styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Razorpay Checkout Script for ₹199 Payments -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-pink-50 text-gray-800 font-sans antialiased">
@@ -15,6 +13,48 @@
     <!-- App Container -->
     <div id="app" class="min-h-screen flex flex-col">
         <!-- Dynamic views will be injected here via app.js -->
+    </div>
+
+    <!-- Payment Verification Modal (Used when user is unpaid or pending verification) -->
+    <div id="payment-modal-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
+            <h2 class="text-2xl font-bold text-gray-800">Unlock Full Access ❤️</h2>
+            <p class="text-sm text-gray-600">
+                Scan the QR code below using any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay <b>₹199</b> (or <b>$10 USD</b>).
+            </p>
+            
+            <!-- Kotak 811 UPI QR Display -->
+            <div class="flex justify-center my-3">
+                <img 
+                    src="upi-qr.png" 
+                    alt="Kotak 811 UPI QR Code" 
+                    class="w-56 h-auto object-contain border p-2 rounded-xl border-pink-300 shadow-md" 
+                />
+            </div>
+
+            <p class="text-xs text-gray-500 font-medium">
+                Account Name: <span class="font-semibold text-gray-700">PANCHAL PRIYANK DINESHBHAI</span>
+            </p>
+
+            <div class="space-y-2 text-left pt-2">
+                <label for="utr-input" class="block text-xs font-semibold text-gray-700">
+                    Enter 12-Digit UPI Reference / UTR Number:
+                </label>
+                <input 
+                    type="text" 
+                    id="utr-input" 
+                    maxlength="12" 
+                    placeholder="e.g. 4289XXXXXXXX" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm font-mono tracking-widest text-center" 
+                />
+            </div>
+
+            <button 
+                id="submit-utr-btn"
+                class="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2.5 rounded-lg transition duration-200 shadow-md">
+                Submit Payment for Verification
+            </button>
+        </div>
     </div>
 
     <!-- Firebase App (Modular CDN scripts) -->
