@@ -212,50 +212,6 @@ function renderVerificationPendingView(user) {
         </div>
     `;
 }
-// ==========================================
-// MANUAL UPI PAYMENT VERIFICATION LOGIC
-// ==========================================
-
-// 1. Function to handle UTR submission
-export async function submitManualUpiPayment() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert("Please log in first!");
-        return;
-    }
-
-    const utrInput = document.getElementById("utr-input")?.value.trim();
-
-    // Validate 12-digit numeric UTR format
-    if (!utrInput || utrInput.length !== 12 || isNaN(utrInput)) {
-        alert("Please enter a valid 12-digit UPI Transaction Reference / UTR Number.");
-        return;
-    }
-
-    try {
-        // Update user document in Cloud Firestore with pending status
-        await updateDoc(doc(db, "users", user.uid), {
-            paymentSubmitted: true,
-            utrNumber: utrInput,
-            paymentStatus: "PENDING_VERIFICATION",
-            paymentSubmittedAt: Date.now()
-        });
-
-        alert("Thank you! Your UTR number has been submitted. We will verify your payment and activate your 1-year access shortly.");
-        window.location.reload();
-    } catch (error) {
-        console.error("Error submitting UTR number:", error);
-        alert("Could not submit payment info. Please try again.");
-    }
-}
-
-// 2. Attach Event Listener to the HTML button
-document.addEventListener("DOMContentLoaded", () => {
-    const submitBtn = document.getElementById("submit-utr-btn");
-    if (submitBtn) {
-        submitBtn.addEventListener("click", submitManualUpiPayment);
-    }
-});
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
     appContainer.innerHTML = `
@@ -903,13 +859,58 @@ window.handleLogout = async function() {
     }
 };
 // ==========================================
+// MANUAL UPI PAYMENT VERIFICATION LOGIC
+// ==========================================
+
+// 1. Function to handle UTR submission
+export async function submitManualUpiPayment() {
+    const user = auth.currentUser;
+    if (!user) {
+        alert("Please log in first!");
+        return;
+    }
+
+    const utrInput = document.getElementById("utr-input")?.value.trim();
+
+    // Validate 12-digit numeric UTR format
+    if (!utrInput || utrInput.length !== 12 || isNaN(utrInput)) {
+        alert("Please enter a valid 12-digit UPI Transaction Reference / UTR Number.");
+        return;
+    }
+
+    try {
+        // Update user document in Cloud Firestore with pending status
+        await updateDoc(doc(db, "users", user.uid), {
+            paymentSubmitted: true,
+            utrNumber: utrInput,
+            paymentStatus: "PENDING_VERIFICATION",
+            paymentSubmittedAt: Date.now()
+        });
+
+        alert("Thank you! Your UTR number has been submitted. We will verify your payment and activate your 1-year access shortly.");
+        window.location.reload();
+    } catch (error) {
+        console.error("Error submitting UTR number:", error);
+        alert("Could not submit payment info. Please try again.");
+    }
+}
+
+// 2. Attach Event Listener to the HTML button
+document.addEventListener("DOMContentLoaded", () => {
+    const submitBtn = document.getElementById("submit-utr-btn");
+    if (submitBtn) {
+        submitBtn.addEventListener("click", submitManualUpiPayment);
+    }
+});
+
+
+// ==========================================
 // ADMIN PAYMENT APPROVAL PANEL LOGIC
 // ==========================================
 
-// Replace with your actual Admin Firebase Auth UID (from Firebase Console -> Authentication)
 const ADMIN_UID = "ZNZI6i0t5gNxWSt9mD1GpNBwlEk1"; 
 
-// 1. Fetch and Display All Users with "PENDING_VERIFICATION"
+// 3. Fetch and Display All Users with "PENDING_VERIFICATION"
 export async function loadPendingPayments() {
     const user = auth.currentUser;
     
@@ -965,7 +966,7 @@ export async function loadPendingPayments() {
     }
 }
 
-// 2. One-Click Approval Function
+// 4. One-Click Approval Function
 window.approveUtrPayment = async function(targetUserId) {
     if (!confirm("Are you sure you verified this UTR in your Kotak 811 bank account?")) {
         return;
@@ -990,9 +991,3 @@ window.approveUtrPayment = async function(targetUserId) {
         alert("Failed to approve payment. Check console for details.");
     }
 };
-
-// 3. Auto-trigger loadPendingPayments when auth state changes or page loads
-document.addEventListener("DOMContentLoaded", () => {
-    // If you have an auth state listener elsewhere, you can also call loadPendingPayments() 
-    // once the admin successfully signs in.
-});
