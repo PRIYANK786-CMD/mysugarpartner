@@ -75,7 +75,7 @@ const rtcConfig = {
 
 
 // ============================================================================
-// SECTION 3: ROUTER & AUTH STATE HANDLER (WITH PAYMENT ENFORCEMENT)
+// SECTION 3: ROUTER & AUTH STATE HANDLER (WITH STRICT PAYMENT ENFORCEMENT)
 // ============================================================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -84,23 +84,30 @@ onAuthStateChanged(auth, async (user) => {
             renderVerificationPendingView(user);
         } else {
             const userDoc = await getDoc(doc(db, "users", user.uid));
+            
+            // If user hasn't created a profile yet, let them create it
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 document.getElementById("payment-modal-overlay")?.classList.add("hidden");
                 renderProfileCreationView(user);
             } else {
                 const userData = userDoc.data();
                 
-                // Enforce Payment Gatekeeper: Admin or approved users bypass modal
+                // STRICT PAYMENT GATEKEEPER CHECK:
+                // Only allow access if the user is the Admin OR has explicit payment approval
                 if (user.uid === ADMIN_UID || userData.hasPaid === true) {
                     document.getElementById("payment-modal-overlay")?.classList.add("hidden");
                     renderMainDashboard(user);
                     listenForIncomingCalls(user.uid);
+                    
                     if (user.uid === ADMIN_UID) {
                         loadPendingPayments();
                     }
                 } else {
-                    // Unpaid new or old users are forced to see the payment modal
+                    // FORCE PAYMENT MODAL: Hide dashboard content and show payment overlay
                     document.getElementById("payment-modal-overlay")?.classList.remove("hidden");
+                    
+                    // Render dashboard underneath so the admin panel or background structure exists, 
+                    // but the payment modal blocks them completely until paid/approved.
                     renderMainDashboard(user);
                     listenForIncomingCalls(user.uid);
                 }
