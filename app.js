@@ -85,32 +85,35 @@ onAuthStateChanged(auth, async (user) => {
         } else {
             const userDoc = await getDoc(doc(db, "users", user.uid));
             
-            // If a user hasn't completed their profile onboarding yet, let them do that first
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 document.getElementById("payment-modal-overlay")?.classList.add("hidden");
                 renderProfileCreationView(user);
             } else {
                 const userData = userDoc.data();
-                
-                // Check if user is the Admin
                 const isAdmin = (user.uid === ADMIN_UID);
-                
-                // Check if user has explicitly paid and been approved by admin
                 const hasValidPayment = (userData.hasPaid === true && userData.paymentStatus === "APPROVED");
 
-                // Render the dashboard layout in the background
                 renderMainDashboard(user);
                 listenForIncomingCalls(user.uid);
 
                 if (isAdmin || hasValidPayment) {
-                    // ALLOW ACCESS: Hide the payment modal completely
                     document.getElementById("payment-modal-overlay")?.classList.add("hidden");
-                    if (isAdmin) {
-                        loadPendingPayments();
-                    }
+                    if (isAdmin) loadPendingPayments();
                 } else {
-                    // BLOCK ACCESS: Force the Kotak 811 payment modal overlay to pop up for everyone else
+                    // SHOW PAYMENT MODAL
                     document.getElementById("payment-modal-overlay")?.classList.remove("hidden");
+                    
+                    const domesticSec = document.getElementById("domestic-payment-section");
+                    const intlSec = document.getElementById("international-payment-section");
+
+                    // Check user's locked country
+                    if (userData.country === "India") {
+                        domesticSec?.classList.remove("hidden");
+                        intlSec?.classList.add("hidden");
+                    } else {
+                        intlSec?.classList.remove("hidden");
+                        domesticSec?.classList.add("hidden");
+                    }
                 }
             }
         }
@@ -120,6 +123,7 @@ onAuthStateChanged(auth, async (user) => {
         renderAuthView();
     }
 });
+
 
 // ============================================================================
 // SECTION 4: INCOMING VIDEO CALL LISTENER & HANDLERS
@@ -294,12 +298,15 @@ function renderProfileCreationView(user) {
             imageUrl = await convertImageToBase64(fileInput.files[0]);
         }
 
+        // Capture country from the dropdown (defaults to India if not found)
+        const selectedCountry = document.getElementById("p-country")?.value || document.getElementById("auth-country")?.value || "India";
+
         const profileData = {
             uid: user.uid,
             email: user.email,
             name: document.getElementById("p-name").value,
             age: document.getElementById("p-age").value,
-            country: document.getElementById("p-country").value,
+            country: selectedCountry, // <--- Saved permanently from selection
             interest: document.getElementById("p-interest").value,
             diagnosedYear: document.getElementById("p-diagnosed").value,
             hobbies: document.getElementById("p-hobbies").value,
@@ -307,8 +314,8 @@ function renderProfileCreationView(user) {
             profileCompleted: true,
             isLive: true,
             blockedUsers: [],
-            hasPaid: user.uid === ADMIN_UID ? true : false,       // <-- Admin is true, others are false
-            paymentStatus: user.uid === ADMIN_UID ? "APPROVED" : "UNPAID" // <-- Admin is approved, others are unpaid
+            hasPaid: user.uid === ADMIN_UID ? true : false,
+            paymentStatus: user.uid === ADMIN_UID ? "APPROVED" : "UNPAID"
         };
 
         await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
@@ -395,14 +402,24 @@ window.switchTab = async function(tab) {
         `;
     }
     else if (tab === 'edit') {
-        let countryOptions = countries.map(c => `<option value="${c}" ${userData.country === c ? 'selected' : ''}>${c}</option>`).join('');
+        // Retrieve the user's saved country (defaults to India if not set)
+        const userCountry = userData.country || "India";
+
         container.innerHTML = `
             <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Edit Profile</h2>
                 <div class="space-y-4">
                     <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
                     <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
-                    <select id="e-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
+                    
+                    <!-- Fixed Country Field (Locked) -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Country (Fixed)</label>
+                        <input type="text" value="${userCountry}" disabled 
+                               class="w-full bg-gray-100 border border-gray-300 text-gray-500 px-3 py-2 rounded-lg text-sm cursor-not-allowed">
+                        <p class="text-[10px] text-gray-400 mt-1">Country is fixed to your registration selection and cannot be changed.</p>
+                    </div>
+
                     <select id="e-interest" class="w-full px-4 py-2 border rounded-lg">
                         <option value="Dating" ${userData.interest === 'Dating' ? 'selected' : ''}>Dating</option>
                         <option value="Short-term relationship" ${userData.interest === 'Short-term relationship' ? 'selected' : ''}>Short-term relationship</option>
@@ -431,10 +448,10 @@ window.switchTab = async function(tab) {
                 imageUrl = await convertImageToBase64(fileInput.files[0]);
             }
 
+            // Notice we do NOT update the country here, keeping it locked to userCountry
             await updateDoc(doc(db, "users", currentUser.uid), {
                 name: document.getElementById("e-name").value,
                 age: document.getElementById("e-age").value,
-                country: document.getElementById("e-country").value,
                 interest: document.getElementById("e-interest").value,
                 diagnosedYear: document.getElementById("e-diagnosed").value,
                 hobbies: document.getElementById("e-hobbies").value,
@@ -914,43 +931,96 @@ window.handleLogout = async function() {
 
 
 // ============================================================================
-// SECTION 9: MANUAL UPI PAYMENT VERIFICATION LOGIC
+// SECTION 9: PAYMENT VERIFICATION LOGIC (UPI & PAYPAL TOGGLE)
 // ============================================================================
-export async function submitManualUpiPayment() {
-    const user = auth.currentUser;
-    if (!user) {
-        alert("Please log in first!");
-        return;
-    }
+function updatePaymentSectionsVisibility() {
+    const countrySelect = document.getElementById("auth-country");
+    const domesticSection = document.getElementById("domestic-payment-section");
+    const internationalSection = document.getElementById("international-payment-section");
 
-    const utrInput = document.getElementById("utr-input")?.value.trim();
+    if (!countrySelect || !domesticSection || !internationalSection) return;
 
-    if (!utrInput || utrInput.length !== 12 || isNaN(utrInput)) {
-        alert("Please enter a valid 12-digit UPI Transaction Reference / UTR Number.");
-        return;
-    }
-
-    try {
-        await updateDoc(doc(db, "users", user.uid), {
-            paymentSubmitted: true,
-            utrNumber: utrInput,
-            paymentStatus: "PENDING_VERIFICATION",
-            paymentSubmittedAt: Date.now()
-        });
-
-        alert("Thank you! Your UTR number has been submitted. We will verify your payment and activate your 1-year access shortly.");
-        window.location.reload();
-    } catch (error) {
-        console.error("Error submitting UTR number:", error);
-        alert("Could not submit payment info. Please try again.");
+    const selectedCountry = countrySelect.value;
+    if (selectedCountry === "India") {
+        domesticSection.classList.remove("hidden");
+        internationalSection.classList.add("hidden");
+    } else {
+        domesticSection.classList.add("hidden");
+        internationalSection.classList.remove("hidden");
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const submitBtn = document.getElementById("submit-utr-btn");
-    if (submitBtn) {
-        submitBtn.addEventListener("click", submitManualUpiPayment);
+document.addEventListener("change", (e) => {
+    if (e.target && e.target.id === "auth-country") {
+        updatePaymentSectionsVisibility();
     }
+});
+
+// DOMESTIC (UPI) FORM SUBMISSION HANDLER
+document.getElementById("upi-submit-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const termsChecked = document.getElementById("terms-check-domestic")?.checked;
+    const utrValue = document.getElementById("utr-input")?.value.trim();
+
+    if (!termsChecked) {
+        alert("Please accept the Terms & Conditions before submitting.");
+        return;
+    }
+
+    if (!utrValue || utrValue.length !== 12 || isNaN(utrValue)) {
+        alert("Please enter a valid 12-digit UTR number.");
+        return;
+    }
+
+    const user = auth.currentUser;
+    if (user) {
+        await updateDoc(doc(db, "users", user.uid), {
+            paymentMethod: "UPI",
+            utrNumber: utrValue,
+            paymentStatus: "PENDING_VERIFICATION",
+            acceptedTerms: true,
+            termsAcceptedAt: Date.now(),
+            paymentSubmittedAt: Date.now()
+        });
+        alert("UTR submitted successfully! Please wait for Admin approval.");
+        location.reload();
+    }
+});
+
+// INTERNATIONAL (PAYPAL) FORM SUBMISSION HANDLER
+document.getElementById("paypal-submit-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const termsChecked = document.getElementById("terms-check-intl")?.checked;
+    const paypalTxValue = document.getElementById("paypal-tx-input")?.value.trim();
+
+    if (!termsChecked) {
+        alert("Please accept the Terms & Conditions before submitting.");
+        return;
+    }
+
+    if (!paypalTxValue) {
+        alert("Please enter your PayPal Transaction ID or Email.");
+        return;
+    }
+
+    const user = auth.currentUser;
+    if (user) {
+        await updateDoc(doc(db, "users", user.uid), {
+            paymentMethod: "PayPal",
+            utrNumber: `PP-${paypalTxValue}`, // Tagged with PP prefix for PayPal
+            paymentStatus: "PENDING_VERIFICATION",
+            acceptedTerms: true,
+            termsAcceptedAt: Date.now(),
+            paymentSubmittedAt: Date.now()
+        });
+        alert("Payment details submitted successfully! Please wait for Admin approval.");
+        location.reload();
+    }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+    // Initial check on load
+    updatePaymentSectionsVisibility();
 });
 
 
@@ -984,13 +1054,21 @@ export async function loadPendingPayments() {
             const submittedDate = data.paymentSubmittedAt 
                 ? new Date(data.paymentSubmittedAt).toLocaleString() 
                 : "Unknown";
+            
+            const isPayPal = data.paymentMethod === "PayPal";
+            const paymentDetailsLabel = isPayPal ? "PayPal Tx / Email:" : "UTR Number:";
+            const paymentDetailsValue = isPayPal ? (data.paypalTransactionId || "N/A") : (data.utrNumber || "N/A");
+            const badgeBgColor = isPayPal ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-pink-50 border-pink-200 text-pink-700";
 
             html += `
-                <div class="p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-pink-50/50 border-pink-200">
+                <div class="p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 border-gray-200">
                     <div class="space-y-1">
                         <p class="font-bold text-gray-800">${data.name || "User"} (${data.email || "No email"})</p>
                         <p class="text-xs text-gray-600">
-                            UTR Number: <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-300 font-bold text-pink-600">${data.utrNumber || "N/A"}</span>
+                            Method: <span class="font-semibold uppercase px-1.5 py-0.5 rounded ${badgeBgColor}">${data.paymentMethod || "UPI"}</span>
+                        </p>
+                        <p class="text-xs text-gray-600">
+                            ${paymentDetailsLabel} <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-300 font-bold">${paymentDetailsValue}</span>
                         </p>
                         <p class="text-xs text-gray-400">Submitted: ${submittedDate}</p>
                     </div>
@@ -1011,7 +1089,7 @@ export async function loadPendingPayments() {
 }
 
 window.approveUtrPayment = async function(targetUserId) {
-    if (!confirm("Are you sure you verified this UTR in your Kotak 811 bank account?")) {
+    if (!confirm("Are you sure you verified this payment in your bank/PayPal account?")) {
         return;
     }
 
