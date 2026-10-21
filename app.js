@@ -1007,7 +1007,7 @@ document.getElementById("paypal-submit-form")?.addEventListener("submit", async 
     if (user) {
         await updateDoc(doc(db, "users", user.uid), {
             paymentMethod: "PayPal",
-            utrNumber: `PP-${paypalTxValue}`, // Tagged with PP prefix for PayPal
+            paypalTransactionId: paypalTxValue, // <--- Fixed property name so Admin panel reads it correctly
             paymentStatus: "PENDING_VERIFICATION",
             acceptedTerms: true,
             termsAcceptedAt: Date.now(),
@@ -1019,7 +1019,6 @@ document.getElementById("paypal-submit-form")?.addEventListener("submit", async 
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Initial check on load
     updatePaymentSectionsVisibility();
 });
 
