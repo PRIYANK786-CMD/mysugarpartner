@@ -61,44 +61,47 @@
             </form>
         </div>
 
-        <!-- INTERNATIONAL USERS (PAYPAL) -->
-        <div id="international-payment-section" class="hidden">
-            <div class="bg-blue-50 p-3 rounded-lg mb-3 border border-blue-200">
-                <p class="text-sm font-semibold text-blue-700">Fee: $10 USD / Year</p>
-                <p class="text-xs text-gray-500">Pay securely via Credit/Debit Card or PayPal</p>
-            </div>
-            
-            <a href="https://paypal.me/yourusername/10USD" target="_blank" 
-               class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm mb-3 transition shadow-md">
-                💳 Pay $10 via PayPal / Card
-            </a>
+        <!-- INTERNATIONAL USERS (PAYONEER) -->
+<div id="international-payment-section" class="hidden">
+    <div class="bg-blue-50 p-3 rounded-lg mb-3 border border-blue-200">
+        <p class="text-sm font-semibold text-blue-700">Fee: $20 USD / Year</p>
+        <p class="text-xs text-gray-500">Pay securely via Credit/Debit Card or Bank Transfer</p>
+    </div>
+    
+    <!-- Updated Payoneer Payment Link -->
+    <a href="https://link.payoneer.com/Token?t=66478E6DB3E34FA4856455AF9D54D1E4&src=pl" 
+       target="_blank" 
+       rel="noopener noreferrer"
+       class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm mb-3 transition shadow-md text-center">
+        💳 Pay $20 via Card / International Transfer
+    </a>
 
-            <p class="text-xs text-gray-500 mb-2">After payment, enter your PayPal Transaction ID or Email below:</p>
+    <p class="text-xs text-gray-500 mb-2">After payment, enter your Transaction ID or Email below:</p>
 
-            <form id="paypal-submit-form" class="space-y-3">
-                <input type="text" id="paypal-tx-input" placeholder="Enter PayPal Transaction ID or Email" required 
-                       class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
-                
-                <!-- TERMS & CONDITIONS CHECKBOX (INTERNATIONAL) -->
-                <div class="text-left bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
-                    <p class="font-semibold text-gray-700">Terms & Conditions:</p>
-                    <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
-                        <li>All payments are <b>100% Non-Refundable</b> once submitted.</li>
-                        <li>Users join, match, and communicate entirely at their <b>own risk</b>.</li>
-                        <li>You must be 18+ years old to register and use this site.</li>
-                        <li>Please allow up to <b>24 hours</b> for admin approval after submitting your UTR/PAYPAL transaction ID.</li>
-                    </ul>
-                    <label class="flex items-start mt-2 cursor-pointer font-medium text-gray-800">
-                        <input type="checkbox" id="terms-check-intl" required class="mt-0.5 mr-2 h-4 w-4 text-blue-600 rounded">
-                        <span>I agree to the Terms & Conditions and understand payments are non-refundable.</span>
-                    </label>
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-sm transition shadow-md">
-                    Submit Payment Details
-                </button>
-            </form>
+    <form id="paypal-submit-form" class="space-y-3">
+        <input type="text" id="paypal-tx-input" placeholder="Enter Payoneer Transaction ID or Email" required 
+               class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
+        
+        <!-- TERMS & CONDITIONS CHECKBOX -->
+        <div class="text-left bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
+            <p class="font-semibold text-gray-700">Terms & Conditions:</p>
+            <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
+                <li>All payments are <b>100% Non-Refundable</b> once submitted.</li>
+                <li>Users join, match, and communicate entirely at their <b>own risk</b>.</li>
+                <li>You must be 18+ years old to register and use this site.</li>
+                <li>Please allow up to <b>24 hours</b> for admin approval after submitting your Transaction ID.</li>
+            </ul>
+            <label class="flex items-start mt-2 cursor-pointer font-medium text-gray-800">
+                <input type="checkbox" id="terms-check-intl" required class="mt-0.5 mr-2 h-4 w-4 text-blue-600 rounded">
+                <span>I agree to the Terms & Conditions and understand payments are non-refundable.</span>
+            </label>
         </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-sm transition shadow-md">
+            Submit Payment Details
+        </button>
+    </form>
+</div>
 
     </div>
 </div>
