@@ -987,27 +987,27 @@ document.getElementById("upi-submit-form")?.addEventListener("submit", async (e)
     }
 });
 
-// INTERNATIONAL (PAYPAL) FORM SUBMISSION HANDLER
-document.getElementById("paypal-submit-form")?.addEventListener("submit", async (e) => {
+// INTERNATIONAL (PAYONEER) FORM SUBMISSION HANDLER
+document.getElementById("payoneer-submit-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const termsChecked = document.getElementById("terms-check-intl")?.checked;
-    const paypalTxValue = document.getElementById("paypal-tx-input")?.value.trim();
+    const payoneerTxValue = document.getElementById("payoneer-tx-input")?.value.trim();
 
     if (!termsChecked) {
         alert("Please accept the Terms & Conditions before submitting.");
         return;
     }
 
-    if (!paypalTxValue) {
-        alert("Please enter your PayPal Transaction ID or Email.");
+    if (!payoneerTxValue) {
+        alert("Please enter your Payoneer Transaction ID or Email.");
         return;
     }
 
     const user = auth.currentUser;
     if (user) {
         await updateDoc(doc(db, "users", user.uid), {
-            paymentMethod: "PayPal",
-            paypalTransactionId: paypalTxValue, // <--- Fixed property name so Admin panel reads it correctly
+            paymentMethod: "Payoneer",
+            payoneerTransactionId: payoneerTxValue, // Updated property name
             paymentStatus: "PENDING_VERIFICATION",
             acceptedTerms: true,
             termsAcceptedAt: Date.now(),
@@ -1026,22 +1026,28 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================================
 // SECTION 10: ADMIN PAYMENT APPROVAL PANEL LOGIC
 // ============================================================================
+
+// 1. Function to fetch and display users waiting for payment approval
 export async function loadPendingPayments() {
     const user = auth.currentUser;
     
+    // If not logged in or not the admin user, hide the admin panel completely
     if (!user || user.uid !== ADMIN_UID) {
         document.getElementById("admin-panel")?.classList.add("hidden");
         return;
     }
 
+    // Show the admin panel for you (the admin)
     document.getElementById("admin-panel")?.classList.remove("hidden");
     const container = document.getElementById("pending-utr-list");
     container.innerHTML = `<p class="text-gray-500 text-sm text-center py-4">Checking for submissions...</p>`;
 
     try {
+        // Query Firestore for users whose payment status is waiting for verification
         const q = query(collection(db, "users"), where("paymentStatus", "==", "PENDING_VERIFICATION"));
         const querySnapshot = await getDocs(q);
 
+        // If no one is waiting, show a friendly message
         if (querySnapshot.empty) {
             container.innerHTML = `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-xl">No pending payment approvals right now. 👍</div>`;
             return;
@@ -1054,11 +1060,13 @@ export async function loadPendingPayments() {
                 ? new Date(data.paymentSubmittedAt).toLocaleString() 
                 : "Unknown";
             
-            const isPayPal = data.paymentMethod === "PayPal";
-            const paymentDetailsLabel = isPayPal ? "PayPal Tx / Email:" : "UTR Number:";
-            const paymentDetailsValue = isPayPal ? (data.paypalTransactionId || "N/A") : (data.utrNumber || "N/A");
-            const badgeBgColor = isPayPal ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-pink-50 border-pink-200 text-pink-700";
+            // Check whether the payment method is Payoneer (International) or UPI (Domestic)
+            const isPayoneer = data.paymentMethod === "Payoneer";
+            const paymentDetailsLabel = isPayoneer ? "Payoneer Tx / Email:" : "UTR Number:";
+            const paymentDetailsValue = isPayoneer ? (data.payoneerTransactionId || "N/A") : (data.utrNumber || "N/A");
+            const badgeBgColor = isPayoneer ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-pink-50 border-pink-200 text-pink-700";
 
+            // Build the card HTML for each pending user
             html += `
                 <div class="p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 border-gray-200">
                     <div class="space-y-1">
@@ -1087,15 +1095,17 @@ export async function loadPendingPayments() {
     }
 }
 
+// 2. Function triggered when you click "Approve" for a specific user
 window.approveUtrPayment = async function(targetUserId) {
-    if (!confirm("Are you sure you verified this payment in your bank/PayPal account?")) {
+    if (!confirm("Are you sure you verified this payment in your bank or Payoneer account?")) {
         return;
     }
 
     const now = Date.now();
-    const oneYearMillis = 365 * 24 * 60 * 60 * 1000;
+    const oneYearMillis = 365 * 24 * 60 * 60 * 1000; // Calculates 1 year in milliseconds
 
     try {
+        // Update user record in Firestore to grant full platform access
         await updateDoc(doc(db, "users", targetUserId), {
             hasPaid: true,
             paymentStatus: "APPROVED",
@@ -1104,7 +1114,7 @@ window.approveUtrPayment = async function(targetUserId) {
         });
 
         alert("User approved successfully! 1-year access granted.");
-        loadPendingPayments();
+        loadPendingPayments(); // Refresh the list automatically
     } catch (error) {
         console.error("Error approving user:", error);
         alert("Failed to approve payment. Check console for details.");
