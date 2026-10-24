@@ -63,6 +63,7 @@ let localStream = null;
 let activeCallId = null;
 let callDocUnsubscribe = null;
 let activeChatUnsubscribe = null;
+let currentActiveBuddyId = null; // Tracks currently active chat room to prevent conversation breaks
 
 const rtcConfig = {
     iceServers: [
@@ -285,6 +286,10 @@ function renderMainDashboard(user) {
 }
 
 window.switchTab = async function(tab) {
+    if (tab !== 'chat') {
+        currentActiveBuddyId = null;
+    }
+
     if (activeChatUnsubscribe) {
         activeChatUnsubscribe();
         activeChatUnsubscribe = null;
@@ -460,7 +465,6 @@ window.switchTab = async function(tab) {
 
         const buddyListContainer = document.getElementById("chat-buddies-list");
         
-        // FIXED: Query accepted requests safely using specific where clauses matching security rules
         const sentQuery = query(collection(db, "requests"), where("senderId", "==", currentUser.uid), where("status", "==", "accepted"));
         const recvQuery = query(collection(db, "requests"), where("receiverId", "==", currentUser.uid), where("status", "==", "accepted"));
         const [sentSnap, recvSnap] = await Promise.all([getDocs(sentQuery), getDocs(recvQuery)]);
@@ -483,6 +487,8 @@ window.switchTab = async function(tab) {
                 
                 const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
                 onSnapshot(msgQuery, (snapshot) => {
+                    if (currentActiveBuddyId === buddyId) return; // Skip badge if chat is already open
+
                     let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
                     let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
                     
@@ -533,6 +539,14 @@ window.respondRequest = async function(reqId, status) {
 // SECTION 6: REALTIME CHAT SYSTEM
 // ==========================================
 window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
+    currentActiveBuddyId = buddyId;
+
+    const buddyEl = document.getElementById(`buddy-item-${buddyId}`);
+    if (buddyEl) {
+        const badgeContainer = buddyEl.querySelector('.buddy-badge');
+        if (badgeContainer) badgeContainer.innerHTML = '';
+    }
+
     if (activeChatUnsubscribe) {
         activeChatUnsubscribe();
         activeChatUnsubscribe = null;
@@ -631,7 +645,6 @@ window.sendTextMessage = async function(buddyId) {
         read: false
     };
 
-    // Instantly show message locally on sender's screen
     const msgBox = document.getElementById("messages-box");
     if (msgBox) {
         msgBox.innerHTML += `
@@ -675,7 +688,6 @@ window.sendMediaMessage = async function(buddyId) {
         read: false
     };
 
-    // Instantly render media locally
     const msgBox = document.getElementById("messages-box");
     if (msgBox) {
         let contentHtml = isImage 
