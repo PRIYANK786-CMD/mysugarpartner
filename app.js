@@ -590,13 +590,19 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    const q = query(collection(db, "messages"), where("chatId", "==", chatId), orderBy("timestamp", "asc"), limit(100));
+    // FIXED: Query by chatId only and sort in JavaScript (no composite index needed!)
+    const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
         if (!msgBox) return;
         
+        // Convert snapshot docs to an array and sort them client-side by timestamp
+        const docList = [];
+        snapshot.forEach(docSnap => docList.push(docSnap));
+        docList.sort((a, b) => (a.data().timestamp || 0) - (b.data().timestamp || 0));
+
         msgBox.innerHTML = "";
-        snapshot.forEach(docSnap => {
+        docList.forEach(docSnap => {
             const m = docSnap.data();
             
             if (m.timestamp > myClearTime) {
