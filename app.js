@@ -576,7 +576,6 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    // FIXED: Query messages specifically matching this chat thread using chatId
     const q = query(collection(db, "messages"), where("chatId", "==", chatId), orderBy("timestamp", "asc"), limit(100));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
@@ -622,7 +621,7 @@ window.sendTextMessage = async function(buddyId) {
     const currentUid = auth.currentUser.uid;
     const chatId = [currentUid, buddyId].sort().join('_');
 
-    await addDoc(collection(db, "messages"), {
+    const messageData = {
         senderId: currentUid,
         receiverId: buddyId,
         chatId: chatId,
@@ -630,32 +629,77 @@ window.sendTextMessage = async function(buddyId) {
         content: text,
         timestamp: Date.now(),
         read: false
-    });
-    input.value = "";
+    };
+
+    // Instantly show message locally on sender's screen
     const msgBox = document.getElementById("messages-box");
-    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+    if (msgBox) {
+        msgBox.innerHTML += `
+            <div class="flex justify-end w-full">
+                <div class="bg-pink-100 text-gray-800 p-3 rounded-xl max-w-xs">
+                    <p>${text}</p>
+                </div>
+            </div>
+        `;
+        msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    input.value = "";
+
+    try {
+        await addDoc(collection(db, "messages"), messageData);
+    } catch (error) {
+        console.error("Error sending message: ", error);
+        alert("Failed to send message.");
+    }
 };
 
 window.sendMediaMessage = async function(buddyId) {
-    const file = document.getElementById("media-input").files[0];
+    const fileInput = document.getElementById("media-input");
+    const file = fileInput.files[0];
     if (!file) return;
     const base64Data = await convertImageToBase64(file);
 
     const currentUid = auth.currentUser.uid;
     const chatId = [currentUid, buddyId].sort().join('_');
+    const isImage = file.type.includes('image');
 
-    await addDoc(collection(db, "messages"), {
+    const messageData = {
         senderId: currentUid,
         receiverId: buddyId,
         chatId: chatId,
-        type: file.type.includes('image') ? 'image' : 'file',
+        type: isImage ? 'image' : 'file',
         fileName: file.name,
         content: base64Data,
         timestamp: Date.now(),
         read: false
-    });
+    };
+
+    // Instantly render media locally
     const msgBox = document.getElementById("messages-box");
-    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+    if (msgBox) {
+        let contentHtml = isImage 
+            ? `<img src="${base64Data}" class="max-w-xs rounded-lg mb-1"><a href="${base64Data}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`
+            : `<a href="${base64Data}" download="${file.name}" class="text-blue-500 underline text-sm">📥 Download ${file.name}</a>`;
+
+        msgBox.innerHTML += `
+            <div class="flex justify-end w-full">
+                <div class="bg-pink-100 text-gray-800 p-3 rounded-xl max-w-xs">
+                    ${contentHtml}
+                </div>
+            </div>
+        `;
+        msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    fileInput.value = "";
+
+    try {
+        await addDoc(collection(db, "messages"), messageData);
+    } catch (error) {
+        console.error("Error sending media: ", error);
+        alert("Failed to send attachment.");
+    }
 };
 
 window.clearChatHistory = async function(buddyId) {
