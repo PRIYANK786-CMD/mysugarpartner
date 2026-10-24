@@ -590,13 +590,12 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    // FIXED: Query by chatId only and sort in JavaScript (no composite index needed!)
+    // Real-time Firestore listener with client-side timestamp sorting
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
         if (!msgBox) return;
         
-        // Convert snapshot docs to an array and sort them client-side by timestamp
         const docList = [];
         snapshot.forEach(docSnap => docList.push(docSnap));
         docList.sort((a, b) => (a.data().timestamp || 0) - (b.data().timestamp || 0));
@@ -613,10 +612,11 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
                 let contentHtml = m.type === 'text' ? `<p>${m.content}</p>` : `<a href="${m.content}" download="${m.fileName || 'file'}" class="text-blue-500 underline text-sm">📥 Download ${m.fileName || 'Attachment'}</a>`;
                 if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
 
-                const bubbleStyle = m.senderId === currentUid ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
+                const isMe = m.senderId === currentUid;
+                const bubbleStyle = isMe ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
 
                 msgBox.innerHTML += `
-                    <div class="flex ${m.senderId === currentUid ? 'justify-end' : 'justify-start'} w-full">
+                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'} w-full">
                         <div class="${bubbleStyle} p-3 rounded-xl max-w-xs">
                             ${contentHtml}
                         </div>
@@ -641,32 +641,18 @@ window.sendTextMessage = async function(buddyId) {
     const currentUid = auth.currentUser.uid;
     const chatId = [currentUid, buddyId].sort().join('_');
 
-    const messageData = {
-        senderId: currentUid,
-        receiverId: buddyId,
-        chatId: chatId,
-        type: "text",
-        content: text,
-        timestamp: Date.now(),
-        read: false
-    };
-
-    const msgBox = document.getElementById("messages-box");
-    if (msgBox) {
-        msgBox.innerHTML += `
-            <div class="flex justify-end w-full">
-                <div class="bg-pink-100 text-gray-800 p-3 rounded-xl max-w-xs">
-                    <p>${text}</p>
-                </div>
-            </div>
-        `;
-        msgBox.scrollTop = msgBox.scrollHeight;
-    }
-
     input.value = "";
 
     try {
-        await addDoc(collection(db, "messages"), messageData);
+        await addDoc(collection(db, "messages"), {
+            senderId: currentUid,
+            receiverId: buddyId,
+            chatId: chatId,
+            type: "text",
+            content: text,
+            timestamp: Date.now(),
+            read: false
+        });
     } catch (error) {
         console.error("Error sending message: ", error);
         alert("Failed to send message.");
@@ -683,37 +669,19 @@ window.sendMediaMessage = async function(buddyId) {
     const chatId = [currentUid, buddyId].sort().join('_');
     const isImage = file.type.includes('image');
 
-    const messageData = {
-        senderId: currentUid,
-        receiverId: buddyId,
-        chatId: chatId,
-        type: isImage ? 'image' : 'file',
-        fileName: file.name,
-        content: base64Data,
-        timestamp: Date.now(),
-        read: false
-    };
-
-    const msgBox = document.getElementById("messages-box");
-    if (msgBox) {
-        let contentHtml = isImage 
-            ? `<img src="${base64Data}" class="max-w-xs rounded-lg mb-1"><a href="${base64Data}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`
-            : `<a href="${base64Data}" download="${file.name}" class="text-blue-500 underline text-sm">📥 Download ${file.name}</a>`;
-
-        msgBox.innerHTML += `
-            <div class="flex justify-end w-full">
-                <div class="bg-pink-100 text-gray-800 p-3 rounded-xl max-w-xs">
-                    ${contentHtml}
-                </div>
-            </div>
-        `;
-        msgBox.scrollTop = msgBox.scrollHeight;
-    }
-
     fileInput.value = "";
 
     try {
-        await addDoc(collection(db, "messages"), messageData);
+        await addDoc(collection(db, "messages"), {
+            senderId: currentUid,
+            receiverId: buddyId,
+            chatId: chatId,
+            type: isImage ? 'image' : 'file',
+            fileName: file.name,
+            content: base64Data,
+            timestamp: Date.now(),
+            read: false
+        });
     } catch (error) {
         console.error("Error sending media: ", error);
         alert("Failed to send attachment.");
