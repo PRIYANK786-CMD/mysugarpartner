@@ -1,6 +1,6 @@
-// ============================================================================
-// SECTION 1: FIREBASE INITIALIZATION & CONFIGURATION
-// ============================================================================
+// ==========================================
+// SECTION 1: FIREBASE INITIALIZATION & IMPORTS
+// ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
@@ -27,12 +27,9 @@ const db = getFirestore(app);
 
 window.auth = auth;
 const appContainer = document.getElementById("app");
-const ADMIN_UID = "ZNZI6i0t5gNxWSt9mD1GpNBwlEk1";
-
-
-// ============================================================================
-// SECTION 2: GLOBAL CONSTANTS & WEBRTC STATES
-// ============================================================================
+// ==========================================
+// SECTION 2: CONSTANTS & WEBRTC STATE
+// ==========================================
 const countries = [
     "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
     "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
@@ -56,8 +53,7 @@ const countries = [
     "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
     "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
     "Vanuatu", "Vatican City", "Venezuela", "Vietnam",
-    "Yemen",
-    "Zambia", "Zimbabwe"
+    "Yemen", "Zambia", "Zimbabwe"
 ];
 
 let globalCallUnsubscribe = null;
@@ -65,6 +61,7 @@ let peerConnection = null;
 let localStream = null;
 let activeCallId = null;
 let callDocUnsubscribe = null;
+let activeChatUnsubscribe = null;
 
 const rtcConfig = {
     iceServers: [
@@ -72,112 +69,30 @@ const rtcConfig = {
         { urls: 'stun:stun1.l.google.com:19302' }
     ]
 };
-
-
-// ============================================================================
-// SECTION 3: ROUTER & AUTH STATE HANDLER (STRICT PAYMENT ENFORCEMENT)
-// ============================================================================
+// ==========================================
+// SECTION 3: AUTH STATE LISTENER & ROUTER
+// ==========================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         if (!user.emailVerified) {
-            document.getElementById("payment-modal-overlay")?.classList.add("hidden");
             renderVerificationPendingView(user);
         } else {
             const userDoc = await getDoc(doc(db, "users", user.uid));
-            
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
-                document.getElementById("payment-modal-overlay")?.classList.add("hidden");
                 renderProfileCreationView(user);
             } else {
-                const userData = userDoc.data();
-                const isAdmin = (user.uid === ADMIN_UID);
-                const hasValidPayment = (userData.hasPaid === true && userData.paymentStatus === "APPROVED");
-
                 renderMainDashboard(user);
                 listenForIncomingCalls(user.uid);
-
-                if (isAdmin || hasValidPayment) {
-                    document.getElementById("payment-modal-overlay")?.classList.add("hidden");
-                    if (isAdmin) loadPendingPayments();
-                } else {
-                    // SHOW PAYMENT MODAL
-                    document.getElementById("payment-modal-overlay")?.classList.remove("hidden");
-                    
-                    const domesticSec = document.getElementById("domestic-payment-section");
-                    const intlSec = document.getElementById("international-payment-section");
-
-                    // Check user's locked country
-                    if (userData.country === "India") {
-                        domesticSec?.classList.remove("hidden");
-                        intlSec?.classList.add("hidden");
-                    } else {
-                        intlSec?.classList.remove("hidden");
-                        domesticSec?.classList.add("hidden");
-                    }
-                }
             }
         }
     } else {
-        document.getElementById("payment-modal-overlay")?.classList.add("hidden");
         if (globalCallUnsubscribe) globalCallUnsubscribe();
         renderAuthView();
     }
 });
-
-
-// ============================================================================
-// SECTION 4: INCOMING VIDEO CALL LISTENER & HANDLERS
-// ============================================================================
-function listenForIncomingCalls(userId) {
-    if (globalCallUnsubscribe) globalCallUnsubscribe();
-
-    const q = query(collection(db, "videoCalls"), where("receiverId", "==", userId), where("status", "==", "ringing"));
-    globalCallUnsubscribe = onSnapshot(q, (snapshot) => {
-        snapshot.forEach(async (docSnap) => {
-            const callData = docSnap.data();
-            const callerDoc = await getDoc(doc(db, "users", callData.callerId));
-            const callerData = callerDoc.data() || { name: "Buddy" };
-
-            if (document.getElementById("incoming-call-modal")) return;
-
-            const modalHtml = `
-                <div id="incoming-call-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-pulse">
-                    <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
-                        <h3 class="text-xl font-bold text-pink-600 mb-2">📹 Incoming Video Call</h3>
-                        <p class="text-gray-700 mb-6"><b>${callerData.name}</b> is calling you for an in-app video chat.</p>
-                        <div class="flex gap-4">
-                            <button onclick="acceptInAppCall('${docSnap.id}', '${callData.callerId}')" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600">Accept</button>
-                            <button onclick="rejectInAppCall('${docSnap.id}')" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600">Reject</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-        });
-    });
-}
-
-window.acceptInAppCall = async function(callId, callerId) {
-    activeCallId = callId;
-    const modal = document.getElementById("incoming-call-modal");
-    if (modal) modal.remove();
-
-    window.switchTab('chat');
-    setTimeout(() => {
-        window.openChat(callerId, "Buddy", true);
-    }, 500);
-};
-
-window.rejectInAppCall = async function(callId) {
-    await updateDoc(doc(db, "videoCalls", callId), { status: "rejected" });
-    const modal = document.getElementById("incoming-call-modal");
-    if (modal) modal.remove();
-};
-
-
-// ============================================================================
-// SECTION 5: AUTHENTICATION & VERIFICATION VIEWS
-// ============================================================================
+// ==========================================
+// SECTION 4: AUTH & PROFILE CREATION VIEWS
+// ==========================================
 function renderAuthView() {
     appContainer.innerHTML = `
         <div class="flex flex-col items-center justify-between flex-1 px-4 py-12 min-h-screen">
@@ -256,10 +171,6 @@ function renderVerificationPendingView(user) {
     `;
 }
 
-
-// ============================================================================
-// SECTION 6: PROFILE CREATION & UTILITIES
-// ============================================================================
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
     appContainer.innerHTML = `
@@ -298,28 +209,24 @@ function renderProfileCreationView(user) {
             imageUrl = await convertImageToBase64(fileInput.files[0]);
         }
 
-        // Capture country from the dropdown (defaults to India if not found)
-        const selectedCountry = document.getElementById("p-country")?.value || document.getElementById("auth-country")?.value || "India";
-
         const profileData = {
             uid: user.uid,
             email: user.email,
             name: document.getElementById("p-name").value,
             age: document.getElementById("p-age").value,
-            country: selectedCountry, // <--- Saved permanently from selection
+            country: document.getElementById("p-country").value,
             interest: document.getElementById("p-interest").value,
             diagnosedYear: document.getElementById("p-diagnosed").value,
             hobbies: document.getElementById("p-hobbies").value,
             profilePic: imageUrl,
             profileCompleted: true,
             isLive: true,
-            blockedUsers: [],
-            hasPaid: user.uid === ADMIN_UID ? true : false,
-            paymentStatus: user.uid === ADMIN_UID ? "APPROVED" : "UNPAID"
+            blockedUsers: []
         };
 
         await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
-        window.location.reload();
+        renderMainDashboard(user);
+        listenForIncomingCalls(user.uid);
     });
 }
 
@@ -344,11 +251,9 @@ function convertImageToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
-
-
-// ============================================================================
-// SECTION 7: MAIN DASHBOARD & TAB ROUTER
-// ============================================================================
+// ==========================================
+// SECTION 5: MAIN DASHBOARD & TABS
+// ==========================================
 function renderMainDashboard(user) {
     appContainer.innerHTML = `
         <div class="flex flex-col min-h-screen justify-between">
@@ -375,8 +280,6 @@ function renderMainDashboard(user) {
     window.switchTab('profile');
 }
 
-let activeChatUnsubscribe = null;
-
 window.switchTab = async function(tab) {
     if (activeChatUnsubscribe) {
         activeChatUnsubscribe();
@@ -402,24 +305,14 @@ window.switchTab = async function(tab) {
         `;
     }
     else if (tab === 'edit') {
-        // Retrieve the user's saved country (defaults to India if not set)
-        const userCountry = userData.country || "India";
-
+        let countryOptions = countries.map(c => `<option value="${c}" ${userData.country === c ? 'selected' : ''}>${c}</option>`).join('');
         container.innerHTML = `
             <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Edit Profile</h2>
                 <div class="space-y-4">
                     <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
                     <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
-                    
-                    <!-- Fixed Country Field (Locked) -->
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Country (Fixed)</label>
-                        <input type="text" value="${userCountry}" disabled 
-                               class="w-full bg-gray-100 border border-gray-300 text-gray-500 px-3 py-2 rounded-lg text-sm cursor-not-allowed">
-                        <p class="text-[10px] text-gray-400 mt-1">Country is fixed to your registration selection and cannot be changed.</p>
-                    </div>
-
+                    <select id="e-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
                     <select id="e-interest" class="w-full px-4 py-2 border rounded-lg">
                         <option value="Dating" ${userData.interest === 'Dating' ? 'selected' : ''}>Dating</option>
                         <option value="Short-term relationship" ${userData.interest === 'Short-term relationship' ? 'selected' : ''}>Short-term relationship</option>
@@ -448,10 +341,10 @@ window.switchTab = async function(tab) {
                 imageUrl = await convertImageToBase64(fileInput.files[0]);
             }
 
-            // Notice we do NOT update the country here, keeping it locked to userCountry
             await updateDoc(doc(db, "users", currentUser.uid), {
                 name: document.getElementById("e-name").value,
                 age: document.getElementById("e-age").value,
+                country: document.getElementById("e-country").value,
                 interest: document.getElementById("e-interest").value,
                 diagnosedYear: document.getElementById("e-diagnosed").value,
                 hobbies: document.getElementById("e-hobbies").value,
@@ -621,11 +514,9 @@ window.respondRequest = async function(reqId, status) {
     await updateDoc(doc(db, "requests", reqId), { status });
     window.switchTab('requests');
 };
-
-
-// ============================================================================
-// SECTION 8: CHAT & WEBRTC VIDEO CALL LOGIC
-// ============================================================================
+// ==========================================
+// SECTION 6: REALTIME CHAT SYSTEM
+// ==========================================
 window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     if (activeChatUnsubscribe) {
         activeChatUnsubscribe();
@@ -688,9 +579,12 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
                 let contentHtml = m.type === 'text' ? `<p>${m.content}</p>` : `<a href="${m.content}" download="${m.fileName || 'file'}" class="text-blue-500 underline text-sm">📥 Download ${m.fileName || 'Attachment'}</a>`;
                 if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
 
+                // Fixed: Full static Tailwind class strings for full rendering compatibility
+                const bubbleStyle = m.senderId === currentUid ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
+
                 msgBox.innerHTML += `
                     <div class="flex ${m.senderId === currentUid ? 'justify-end' : 'justify-start'} w-full">
-                        <div class="bg-${m.senderId === currentUid ? 'pink-100 text-gray-800' : 'gray-100'} p-3 rounded-xl max-w-xs">
+                        <div class="${bubbleStyle} p-3 rounded-xl max-w-xs">
                             ${contentHtml}
                         </div>
                     </div>
@@ -701,8 +595,121 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     });
 
     if (autoStartVideo && activeCallId) {
-        answerInAppVideoCall(activeCallId, buddyId);
+        window.answerInAppVideoCall(activeCallId, buddyId);
     }
+};
+
+window.sendTextMessage = async function(buddyId) {
+    const input = document.getElementById("chat-msg-input");
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    await addDoc(collection(db, "messages"), {
+        senderId: auth.currentUser.uid,
+        receiverId: buddyId,
+        type: "text",
+        content: text,
+        timestamp: Date.now(),
+        read: false
+    });
+    input.value = "";
+    const msgBox = document.getElementById("messages-box");
+    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+};
+
+window.sendMediaMessage = async function(buddyId) {
+    const file = document.getElementById("media-input").files[0];
+    if (!file) return;
+    const base64Data = await convertImageToBase64(file);
+
+    await addDoc(collection(db, "messages"), {
+        senderId: auth.currentUser.uid,
+        receiverId: buddyId,
+        type: file.type.includes('image') ? 'image' : 'file',
+        fileName: file.name,
+        content: base64Data,
+        timestamp: Date.now(),
+        read: false
+    });
+    const msgBox = document.getElementById("messages-box");
+    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+};
+
+window.clearChatHistory = async function(buddyId) {
+    if (confirm("Are you sure you want to clear your chat history? This will only remove messages from your view.")) {
+        const currentUid = auth.currentUser.uid;
+        const chatId = [currentUid, buddyId].sort().join('_');
+        const chatMetaRef = doc(db, "chatMeta", chatId);
+        
+        await setDoc(chatMetaRef, {
+            [`cleared_${currentUid}`]: Date.now()
+        }, { merge: true });
+
+        window.openChat(buddyId, document.querySelector('#chat-window-container h3').innerText);
+    }
+};
+
+window.blockBuddy = async function(buddyId) {
+    if (confirm("Are you sure you want to block this user?")) {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        const userDoc = await getDoc(userRef);
+        let blocked = userDoc.data().blockedUsers || [];
+        blocked.push(buddyId);
+        await updateDoc(userRef, { blockedUsers: blocked });
+        alert("User blocked successfully.");
+        window.switchTab('finding');
+    }
+};
+// ==========================================
+// SECTION 7: WEBRTC VIDEO CALL ENGINE
+// ==========================================
+function listenForIncomingCalls(userId) {
+    if (globalCallUnsubscribe) globalCallUnsubscribe();
+
+    const q = query(collection(db, "videoCalls"), where("receiverId", "==", userId), where("status", "==", "ringing"));
+    globalCallUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.forEach(async (docSnap) => {
+            const callData = docSnap.data();
+            const callerDoc = await getDoc(doc(db, "users", callData.callerId));
+            const callerData = callerDoc.data() || { name: "Buddy" };
+
+            // Prevent duplicate modals
+            const existingModal = document.getElementById("incoming-call-modal");
+            if (existingModal) existingModal.remove();
+
+            const modalHtml = `
+                <div id="incoming-call-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-pulse">
+                    <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
+                        <h3 class="text-xl font-bold text-pink-600 mb-2">📹 Incoming Video Call</h3>
+                        <p class="text-gray-700 mb-6"><b>${callerData.name}</b> is calling you for an in-app video chat.</p>
+                        <div class="flex gap-4">
+                            <button onclick="acceptInAppCall('${docSnap.id}', '${callData.callerId}')" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600">Accept</button>
+                            <button onclick="rejectInAppCall('${docSnap.id}')" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600">Reject</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        });
+    });
+}
+
+window.acceptInAppCall = async function(callId, callerId) {
+    activeCallId = callId;
+    const modal = document.getElementById("incoming-call-modal");
+    if (modal) modal.remove();
+
+    window.switchTab('chat');
+    setTimeout(() => {
+        window.openChat(callerId, "Buddy", true);
+    }, 500);
+};
+
+window.rejectInAppCall = async function(callId) {
+    await updateDoc(doc(db, "videoCalls", callId), { status: "rejected" });
+    const modal = document.getElementById("incoming-call-modal");
+    if (modal) modal.remove();
 };
 
 window.startInAppVideoCall = async function(buddyId) {
@@ -753,7 +760,7 @@ window.startInAppVideoCall = async function(buddyId) {
                 await peerConnection.setRemoteDescription(answer);
             } else if (data.status === 'rejected') {
                 alert("Call rejected by your buddy.");
-                endInAppVideoCall();
+                window.endInAppVideoCall();
             }
         });
 
@@ -853,70 +860,9 @@ window.endInAppVideoCall = async function() {
     const videoContainer = document.getElementById('video-container');
     if (videoContainer) videoContainer.classList.add('hidden');
 };
-
-window.clearChatHistory = async function(buddyId) {
-    if (confirm("Are you sure you want to clear your chat history? This will only remove messages from your view.")) {
-        const currentUid = auth.currentUser.uid;
-        const chatId = [currentUid, buddyId].sort().join('_');
-        const chatMetaRef = doc(db, "chatMeta", chatId);
-        
-        await setDoc(chatMetaRef, {
-            [`cleared_${currentUid}`]: Date.now()
-        }, { merge: true });
-
-        window.openChat(buddyId, document.querySelector('#chat-window-container h3').innerText);
-    }
-};
-
-window.sendTextMessage = async function(buddyId) {
-    const input = document.getElementById("chat-msg-input");
-    if (!input) return;
-    const text = input.value.trim();
-    if (!text) return;
-
-    await addDoc(collection(db, "messages"), {
-        senderId: auth.currentUser.uid,
-        receiverId: buddyId,
-        type: "text",
-        content: text,
-        timestamp: Date.now(),
-        read: false
-    });
-    input.value = "";
-    const msgBox = document.getElementById("messages-box");
-    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
-};
-
-window.sendMediaMessage = async function(buddyId) {
-    const file = document.getElementById("media-input").files[0];
-    if (!file) return;
-    const base64Data = await convertImageToBase64(file);
-
-    await addDoc(collection(db, "messages"), {
-        senderId: auth.currentUser.uid,
-        receiverId: buddyId,
-        type: file.type.includes('image') ? 'image' : 'file',
-        fileName: file.name,
-        content: base64Data,
-        timestamp: Date.now(),
-        read: false
-    });
-    const msgBox = document.getElementById("messages-box");
-    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
-};
-
-window.blockBuddy = async function(buddyId) {
-    if (confirm("Are you sure you want to block this user?")) {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        const userDoc = await getDoc(userRef);
-        let blocked = userDoc.data().blockedUsers || [];
-        blocked.push(buddyId);
-        await updateDoc(userRef, { blockedUsers: blocked });
-        alert("User blocked successfully.");
-        window.switchTab('finding');
-    }
-};
-
+// ==========================================
+// SECTION 8: GLOBAL LOGOUT HANDLER
+// ==========================================
 window.handleLogout = async function() {
     try {
         window.endInAppVideoCall();
@@ -926,197 +872,5 @@ window.handleLogout = async function() {
         window.location.reload();
     } catch (error) {
         alert(error.message);
-    }
-};
-
-
-// ============================================================================
-// SECTION 9: PAYMENT VERIFICATION LOGIC (UPI & PAYPAL TOGGLE)
-// ============================================================================
-function updatePaymentSectionsVisibility() {
-    const countrySelect = document.getElementById("auth-country");
-    const domesticSection = document.getElementById("domestic-payment-section");
-    const internationalSection = document.getElementById("international-payment-section");
-
-    if (!countrySelect || !domesticSection || !internationalSection) return;
-
-    const selectedCountry = countrySelect.value;
-    if (selectedCountry === "India") {
-        domesticSection.classList.remove("hidden");
-        internationalSection.classList.add("hidden");
-    } else {
-        domesticSection.classList.add("hidden");
-        internationalSection.classList.remove("hidden");
-    }
-}
-
-document.addEventListener("change", (e) => {
-    if (e.target && e.target.id === "auth-country") {
-        updatePaymentSectionsVisibility();
-    }
-});
-
-// DOMESTIC (UPI) FORM SUBMISSION HANDLER
-document.getElementById("upi-submit-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const termsChecked = document.getElementById("terms-check-domestic")?.checked;
-    const utrValue = document.getElementById("utr-input")?.value.trim();
-
-    if (!termsChecked) {
-        alert("Please accept the Terms & Conditions before submitting.");
-        return;
-    }
-
-    if (!utrValue || utrValue.length !== 12 || isNaN(utrValue)) {
-        alert("Please enter a valid 12-digit UTR number.");
-        return;
-    }
-
-    const user = auth.currentUser;
-    if (user) {
-        await updateDoc(doc(db, "users", user.uid), {
-            paymentMethod: "UPI",
-            utrNumber: utrValue,
-            paymentStatus: "PENDING_VERIFICATION",
-            acceptedTerms: true,
-            termsAcceptedAt: Date.now(),
-            paymentSubmittedAt: Date.now()
-        });
-        alert("UTR submitted successfully! Please wait for Admin approval.");
-        location.reload();
-    }
-});
-
-// INTERNATIONAL (PAYONEER) FORM SUBMISSION HANDLER
-document.getElementById("payoneer-submit-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const termsChecked = document.getElementById("terms-check-intl")?.checked;
-    const payoneerTxValue = document.getElementById("payoneer-tx-input")?.value.trim();
-
-    if (!termsChecked) {
-        alert("Please accept the Terms & Conditions before submitting.");
-        return;
-    }
-
-    if (!payoneerTxValue) {
-        alert("Please enter your Payoneer Transaction ID or Email.");
-        return;
-    }
-
-    const user = auth.currentUser;
-    if (user) {
-        await updateDoc(doc(db, "users", user.uid), {
-            paymentMethod: "Payoneer",
-            payoneerTransactionId: payoneerTxValue, // Updated property name
-            paymentStatus: "PENDING_VERIFICATION",
-            acceptedTerms: true,
-            termsAcceptedAt: Date.now(),
-            paymentSubmittedAt: Date.now()
-        });
-        alert("Payment details submitted successfully! Please wait for Admin approval.");
-        location.reload();
-    }
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-    updatePaymentSectionsVisibility();
-});
-
-
-// ============================================================================
-// SECTION 10: ADMIN PAYMENT APPROVAL PANEL LOGIC
-// ============================================================================
-
-// 1. Function to fetch and display users waiting for payment approval
-export async function loadPendingPayments() {
-    const user = auth.currentUser;
-    
-    // If not logged in or not the admin user, hide the admin panel completely
-    if (!user || user.uid !== ADMIN_UID) {
-        document.getElementById("admin-panel")?.classList.add("hidden");
-        return;
-    }
-
-    // Show the admin panel for you (the admin)
-    document.getElementById("admin-panel")?.classList.remove("hidden");
-    const container = document.getElementById("pending-utr-list");
-    container.innerHTML = `<p class="text-gray-500 text-sm text-center py-4">Checking for submissions...</p>`;
-
-    try {
-        // Query Firestore for users whose payment status is waiting for verification
-        const q = query(collection(db, "users"), where("paymentStatus", "==", "PENDING_VERIFICATION"));
-        const querySnapshot = await getDocs(q);
-
-        // If no one is waiting, show a friendly message
-        if (querySnapshot.empty) {
-            container.innerHTML = `<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-xl">No pending payment approvals right now. 👍</div>`;
-            return;
-        }
-
-        let html = "";
-        querySnapshot.forEach((userDoc) => {
-            const data = userDoc.data();
-            const submittedDate = data.paymentSubmittedAt 
-                ? new Date(data.paymentSubmittedAt).toLocaleString() 
-                : "Unknown";
-            
-            // Check whether the payment method is Payoneer (International) or UPI (Domestic)
-            const isPayoneer = data.paymentMethod === "Payoneer";
-            const paymentDetailsLabel = isPayoneer ? "Payoneer Tx / Email:" : "UTR Number:";
-            const paymentDetailsValue = isPayoneer ? (data.payoneerTransactionId || "N/A") : (data.utrNumber || "N/A");
-            const badgeBgColor = isPayoneer ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-pink-50 border-pink-200 text-pink-700";
-
-            // Build the card HTML for each pending user
-            html += `
-                <div class="p-4 border rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 border-gray-200">
-                    <div class="space-y-1">
-                        <p class="font-bold text-gray-800">${data.name || "User"} (${data.email || "No email"})</p>
-                        <p class="text-xs text-gray-600">
-                            Method: <span class="font-semibold uppercase px-1.5 py-0.5 rounded ${badgeBgColor}">${data.paymentMethod || "UPI"}</span>
-                        </p>
-                        <p class="text-xs text-gray-600">
-                            ${paymentDetailsLabel} <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-300 font-bold">${paymentDetailsValue}</span>
-                        </p>
-                        <p class="text-xs text-gray-400">Submitted: ${submittedDate}</p>
-                    </div>
-                    <button 
-                        onclick="approveUtrPayment('${userDoc.id}')"
-                        class="bg-green-600 hover:bg-green-700 text-white font-semibold text-sm px-4 py-2 rounded-lg transition shadow-sm self-start md:self-center">
-                        ✅ Approve 1-Year Access
-                    </button>
-                </div>
-            `;
-        });
-
-        container.innerHTML = html;
-    } catch (error) {
-        console.error("Error loading pending payments:", error);
-        container.innerHTML = `<p class="text-red-500 text-sm text-center">Failed to load pending payments.</p>`;
-    }
-}
-
-// 2. Function triggered when you click "Approve" for a specific user
-window.approveUtrPayment = async function(targetUserId) {
-    if (!confirm("Are you sure you verified this payment in your bank or Payoneer account?")) {
-        return;
-    }
-
-    const now = Date.now();
-    const oneYearMillis = 365 * 24 * 60 * 60 * 1000; // Calculates 1 year in milliseconds
-
-    try {
-        // Update user record in Firestore to grant full platform access
-        await updateDoc(doc(db, "users", targetUserId), {
-            hasPaid: true,
-            paymentStatus: "APPROVED",
-            subscriptionDate: now,
-            subscriptionExpiry: now + oneYearMillis
-        });
-
-        alert("User approved successfully! 1-year access granted.");
-        loadPendingPayments(); // Refresh the list automatically
-    } catch (error) {
-        console.error("Error approving user:", error);
-        alert("Failed to approve payment. Check console for details.");
     }
 };

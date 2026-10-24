@@ -7,129 +7,14 @@
     <!-- Tailwind CSS CDN for high-performance styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-pink-50 text-gray-800 font-sans antialiased">
+</head><body class="bg-pink-50 text-gray-800 font-sans antialiased">
 
-    <!-- ========================================================= -->
-    <!-- SECTION 1: MAIN APP CONTAINER                            -->
-    <!-- Dynamic views will be injected here via app.js          -->
-    <!-- ========================================================= -->
-    <div id="app" class="min-h-screen flex flex-col"></div>
-
-
-    <!-- ========================================================= -->
-<!-- SECTION 2: PAYMENT VERIFICATION MODAL OVERLAY            -->
-<!-- ========================================================= -->
-<div id="payment-modal-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50 p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-center max-h-[90vh] overflow-y-auto">
-        
-        <h2 class="text-xl font-bold text-gray-800 mb-2">Account Activation Required</h2>
-        <p class="text-xs text-gray-600 mb-4">Complete your 1-year access fee payment to start browsing and matching.</p>
-
-        <!-- INDIAN USERS (UPI / KOTAK QR) -->
-        <div id="domestic-payment-section" class="hidden">
-            <div class="bg-pink-50 p-3 rounded-lg mb-3 border border-pink-200">
-                <p class="text-sm font-semibold text-pink-700">Fee: ₹199 / Year</p>
-                <p class="text-xs text-gray-500">Scan via GPay, PhonePe, Paytm, or BHIM</p>
-            </div>
-            
-            <!-- Replace with your actual QR filename (e.g. image.jpeg) -->
-            <img src="image.jpeg" alt="Kotak UPI QR Code" class="w-44 h-44 mx-auto rounded-lg shadow-md mb-3 object-contain border border-pink-300 p-1">
-            
-            <form id="upi-submit-form" class="space-y-3">
-                <input type="text" id="utr-input" placeholder="Enter 12-digit UTR Number" maxlength="12" required 
-                       class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-pink-500">
-                
-                <!-- TERMS & CONDITIONS CHECKBOX (DOMESTIC) -->
-                <div class="text-left bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
-                    <p class="font-semibold text-gray-700">Terms & Conditions:</p>
-                    <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
-                        <li>All payments are <b>100% Non-Refundable</b> under any circumstances.</li>
-                        <li>Users join, match, and communicate entirely at their <b>own risk</b>.</li>
-                        <li>You must be 18+ years of age to use this service.</li>
-                        <li>Please allow up to <b>24 hours</b> for admin approval after submitting your UTR/PAYPAL transaction ID.</li>
-                    </ul>
-                    <label class="flex items-start mt-2 cursor-pointer font-medium text-gray-800">
-                        <input type="checkbox" id="terms-check-domestic" required class="mt-0.5 mr-2 h-4 w-4 text-pink-600 rounded">
-                        <span>I agree to the Terms & Conditions and understand payments are non-refundable.</span>
-                    </label>
-                </div>
-
-                <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 rounded-lg text-sm transition shadow-md">
-                    Submit UTR for Approval
-                </button>
-            </form>
-        </div>
-
-        <!-- INTERNATIONAL USERS (PAYONEER) -->
-<div id="international-payment-section" class="hidden">
-    <div class="bg-blue-50 p-3 rounded-lg mb-3 border border-blue-200">
-        <p class="text-sm font-semibold text-blue-700">Fee: $20 USD / Year</p>
-        <p class="text-xs text-gray-500">Pay securely via Credit/Debit Card or Bank Transfer</p>
-    </div>
-    
-    <a href="https://link.payoneer.com/Token?t=66478E6DB3E34FA4856455AF9D54D1E4&src=pl" 
-       target="_blank" 
-       rel="noopener noreferrer"
-       class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm mb-3 transition shadow-md text-center">
-        💳 Pay $20 via Card / International Transfer
-    </a>
-
-    <p class="text-xs text-gray-500 mb-2">After payment, enter your Transaction ID or Email below:</p>
-
-    <!-- Updated Form ID & Input ID -->
-    <form id="payoneer-submit-form" class="space-y-3">
-        <input type="text" id="payoneer-tx-input" placeholder="Enter Payoneer Transaction ID or Email" required 
-               class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-center">
-        
-        <div class="text-left bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
-            <p class="font-semibold text-gray-700">Terms & Conditions:</p>
-            <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
-                <li>All payments are <b>100% Non-Refundable</b> once submitted.</li>
-                <li>Users join, match, and communicate entirely at their <b>own risk</b>.</li>
-                <li>You must be 18+ years old to register and use this site.</li>
-                <li>Please allow up to <b>24 hours</b> for admin approval after submitting your Transaction ID.</li>
-            </ul>
-            <label class="flex items-start mt-2 cursor-pointer font-medium text-gray-800">
-                <input type="checkbox" id="terms-check-intl" required class="mt-0.5 mr-2 h-4 w-4 text-blue-600 rounded">
-                <span>I agree to the Terms & Conditions and understand payments are non-refundable.</span>
-            </label>
-        </div>
-
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg text-sm transition shadow-md">
-            Submit Payment Details
-        </button>
-    </form>
-</div>
-
-    </div>
-</div>
-
-
-    <!-- ========================================================= -->
-    <!-- SECTION 3: ADMIN DASHBOARD PANEL                         -->
-    <!-- Panel for admin approval of pending payments             -->
-    <!-- ========================================================= -->
-    <div id="admin-panel" class="hidden max-w-4xl mx-auto p-6 bg-white rounded-2xl shadow-md my-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800">Admin Payment Approvals 🛡️</h1>
-            <button onclick="loadPendingPayments()" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition">
-                🔄 Refresh List
-            </button>
-        </div>
-
-        <div id="pending-utr-list" class="space-y-4">
-            <!-- Pending payments will render dynamically here -->
-            <p class="text-gray-500 text-sm text-center py-4">Loading pending payments...</p>
-        </div>
+    <!-- App Container -->
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Dynamic views will be injected here via app.js -->
     </div>
 
-
-    <!-- ========================================================= -->
-    <!-- SECTION 4: SCRIPT MODULES                                -->
-    <!-- Main JS Application Logic                                -->
-    <!-- ========================================================= -->
+    <!-- Firebase App (Modular CDN scripts) -->
     <script type="module" src="app.js"></script>
-
 </body>
 </html>
