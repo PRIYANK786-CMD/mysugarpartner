@@ -27,6 +27,7 @@ const db = getFirestore(app);
 
 window.auth = auth;
 const appContainer = document.getElementById("app");
+
 // ==========================================
 // SECTION 2: CONSTANTS & WEBRTC STATE
 // ==========================================
@@ -69,6 +70,7 @@ const rtcConfig = {
         { urls: 'stun:stun1.l.google.com:19302' }
     ]
 };
+
 // ==========================================
 // SECTION 3: AUTH STATE LISTENER & ROUTER
 // ==========================================
@@ -90,6 +92,7 @@ onAuthStateChanged(auth, async (user) => {
         renderAuthView();
     }
 });
+
 // ==========================================
 // SECTION 4: AUTH & PROFILE CREATION VIEWS
 // ==========================================
@@ -251,6 +254,7 @@ function convertImageToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
+
 // ==========================================
 // SECTION 5: MAIN DASHBOARD & TABS
 // ==========================================
@@ -454,43 +458,53 @@ window.switchTab = async function(tab) {
             </div>
         `;
 
-        const reqsSnap = await getDocs(collection(db, "requests"));
         const buddyListContainer = document.getElementById("chat-buddies-list");
         
-        reqsSnap.forEach(async (reqDoc) => {
-            const r = reqDoc.data();
-            if (r.status === 'accepted' && (r.senderId === currentUser.uid || r.receiverId === currentUser.uid)) {
-                const buddyId = r.senderId === currentUser.uid ? r.receiverId : r.senderId;
-                const buddyDoc = await getDoc(doc(db, "users", buddyId));
-                const bData = buddyDoc.data();
-                if (bData) {
-                    const liveDotHtml = bData.isLive ? `<span class="live-dot ml-2" title="Live Now"></span>` : '';
-                    
-                    const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
-                    onSnapshot(msgQuery, (snapshot) => {
-                        let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
-                        let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
-                        
-                        let buddyEl = document.getElementById(`buddy-item-${buddyId}`);
-                        if (buddyEl) {
-                            let badgeContainer = buddyEl.querySelector('.buddy-badge');
-                            if (badgeContainer) badgeContainer.innerHTML = badgeHtml;
-                        }
-                    });
-
-                    buddyListContainer.innerHTML += `
-                        <div id="buddy-item-${buddyId}" onclick="openChat('${bData.uid}', '${bData.name}')" class="flex items-center p-3 hover:bg-pink-50 rounded-lg cursor-pointer border-b">
-                            <img src="${bData.profilePic || 'https://via.placeholder.com/150'}" class="w-10 h-10 rounded-full object-cover mr-3">
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-sm flex items-center">${bData.name} ${liveDotHtml}</h4>
-                                <span class="text-xs text-gray-400">Click to chat</span>
-                            </div>
-                            <div class="buddy-badge"></div>
-                        </div>
-                    `;
-                }
+        // FIXED: Query accepted requests safely using specific where clauses matching security rules
+        const sentQuery = query(collection(db, "requests"), where("senderId", "==", currentUser.uid), where("status", "==", "accepted"));
+        const recvQuery = query(collection(db, "requests"), where("receiverId", "==", currentUser.uid), where("status", "==", "accepted"));
+        const [sentSnap, recvSnap] = await Promise.all([getDocs(sentQuery), getDocs(recvQuery)]);
+        
+        const acceptedRequests = [];
+        const seenReqs = new Set();
+        [...sentSnap.docs, ...recvSnap.docs].forEach(docSnap => {
+            if (!seenReqs.has(docSnap.id)) {
+                seenReqs.add(docSnap.id);
+                acceptedRequests.push(docSnap.data());
             }
         });
+
+        for (const r of acceptedRequests) {
+            const buddyId = r.senderId === currentUser.uid ? r.receiverId : r.senderId;
+            const buddyDoc = await getDoc(doc(db, "users", buddyId));
+            const bData = buddyDoc.data();
+            if (bData) {
+                const liveDotHtml = bData.isLive ? `<span class="live-dot ml-2" title="Live Now"></span>` : '';
+                
+                const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
+                onSnapshot(msgQuery, (snapshot) => {
+                    let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
+                    let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
+                    
+                    let buddyEl = document.getElementById(`buddy-item-${buddyId}`);
+                    if (buddyEl) {
+                        let badgeContainer = buddyEl.querySelector('.buddy-badge');
+                        if (badgeContainer) badgeContainer.innerHTML = badgeHtml;
+                    }
+                });
+
+                buddyListContainer.innerHTML += `
+                    <div id="buddy-item-${buddyId}" onclick="openChat('${bData.uid}', '${bData.name}')" class="flex items-center p-3 hover:bg-pink-50 rounded-lg cursor-pointer border-b">
+                        <img src="${bData.profilePic || 'https://via.placeholder.com/150'}" class="w-10 h-10 rounded-full object-cover mr-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-sm flex items-center">${bData.name} ${liveDotHtml}</h4>
+                            <span class="text-xs text-gray-400">Click to chat</span>
+                        </div>
+                        <div class="buddy-badge"></div>
+                    </div>
+                `;
+            }
+        }
     }
     else if (tab === 'delete') {
         if (confirm("Are you sure you want to completely delete your profile?")) {
@@ -514,6 +528,7 @@ window.respondRequest = async function(reqId, status) {
     await updateDoc(doc(db, "requests", reqId), { status });
     window.switchTab('requests');
 };
+
 // ==========================================
 // SECTION 6: REALTIME CHAT SYSTEM
 // ==========================================
@@ -561,7 +576,8 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    const q = query(collection(db, "messages"), orderBy("timestamp", "asc"), limit(100));
+    // FIXED: Query messages specifically matching this chat thread using chatId
+    const q = query(collection(db, "messages"), where("chatId", "==", chatId), orderBy("timestamp", "asc"), limit(100));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
         if (!msgBox) return;
@@ -569,9 +585,8 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         msgBox.innerHTML = "";
         snapshot.forEach(docSnap => {
             const m = docSnap.data();
-            const isMyConversation = (m.senderId === currentUid && m.receiverId === buddyId) || (m.senderId === buddyId && m.receiverId === currentUid);
             
-            if (isMyConversation && m.timestamp > myClearTime) {
+            if (m.timestamp > myClearTime) {
                 if (m.receiverId === currentUid && !m.read) {
                     updateDoc(doc(db, "messages", docSnap.id), { read: true });
                 }
@@ -579,7 +594,6 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
                 let contentHtml = m.type === 'text' ? `<p>${m.content}</p>` : `<a href="${m.content}" download="${m.fileName || 'file'}" class="text-blue-500 underline text-sm">📥 Download ${m.fileName || 'Attachment'}</a>`;
                 if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
 
-                // Fixed: Full static Tailwind class strings for full rendering compatibility
                 const bubbleStyle = m.senderId === currentUid ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
 
                 msgBox.innerHTML += `
@@ -605,9 +619,13 @@ window.sendTextMessage = async function(buddyId) {
     const text = input.value.trim();
     if (!text) return;
 
+    const currentUid = auth.currentUser.uid;
+    const chatId = [currentUid, buddyId].sort().join('_');
+
     await addDoc(collection(db, "messages"), {
-        senderId: auth.currentUser.uid,
+        senderId: currentUid,
         receiverId: buddyId,
+        chatId: chatId,
         type: "text",
         content: text,
         timestamp: Date.now(),
@@ -623,9 +641,13 @@ window.sendMediaMessage = async function(buddyId) {
     if (!file) return;
     const base64Data = await convertImageToBase64(file);
 
+    const currentUid = auth.currentUser.uid;
+    const chatId = [currentUid, buddyId].sort().join('_');
+
     await addDoc(collection(db, "messages"), {
-        senderId: auth.currentUser.uid,
+        senderId: currentUid,
         receiverId: buddyId,
+        chatId: chatId,
         type: file.type.includes('image') ? 'image' : 'file',
         fileName: file.name,
         content: base64Data,
@@ -661,6 +683,7 @@ window.blockBuddy = async function(buddyId) {
         window.switchTab('finding');
     }
 };
+
 // ==========================================
 // SECTION 7: WEBRTC VIDEO CALL ENGINE
 // ==========================================
@@ -674,7 +697,6 @@ function listenForIncomingCalls(userId) {
             const callerDoc = await getDoc(doc(db, "users", callData.callerId));
             const callerData = callerDoc.data() || { name: "Buddy" };
 
-            // Prevent duplicate modals
             const existingModal = document.getElementById("incoming-call-modal");
             if (existingModal) existingModal.remove();
 
@@ -860,6 +882,7 @@ window.endInAppVideoCall = async function() {
     const videoContainer = document.getElementById('video-container');
     if (videoContainer) videoContainer.classList.add('hidden');
 };
+
 // ==========================================
 // SECTION 8: GLOBAL LOGOUT HANDLER
 // ==========================================
