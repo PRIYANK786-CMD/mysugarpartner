@@ -201,7 +201,6 @@ function renderVerificationPendingView(user) {
             btn.innerText = "Checking verification...";
             btn.disabled = true;
 
-            // Fetch latest user status directly from Firebase authentication servers
             await user.reload();
 
             if (auth.currentUser.emailVerified) {
@@ -226,8 +225,7 @@ function renderProfileCreationView(user) {
     appContainer.innerHTML = `
         <div class="flex flex-col justify-between min-h-screen">
             <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full">
-                <h2 class="text-2xl font-bold text-pink-600 mb-2">Create Your Type 1 Profile ❤️</h2>
-                <p class="text-xs text-gray-500 mb-6">Free for Indian Users. $10/year Subscription for International Users.</p>
+                <h2 class="text-2xl font-bold text-pink-600 mb-6">Create Your Type 1 Profile ❤️</h2>
                 <div class="space-y-4">
                     <input type="text" id="p-name" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg">
                     <input type="number" id="p-age" placeholder="Age" class="w-full px-4 py-2 border rounded-lg">
@@ -268,7 +266,6 @@ function renderProfileCreationView(user) {
             imageUrl = await convertImageToBase64(fileInput.files[0]);
         }
 
-        // Indian users get free lifetime access; International users trigger Paddle checkout ($10/year)
         if (country === "India") {
             await saveUserProfileToFirestore(user, country, imageUrl, "free", null);
         } else {
@@ -324,7 +321,7 @@ async function saveUserProfileToFirestore(user, country, imageUrl, subscriptionT
         email: user.email,
         name: document.getElementById("p-name") ? document.getElementById("p-name").value : "",
         age: document.getElementById("p-age") ? document.getElementById("p-age").value : "",
-        country: country, // Locked permanently after selection
+        country: country, 
         interest: document.getElementById("p-interest") ? document.getElementById("p-interest").value : "",
         diagnosedYear: document.getElementById("p-diagnosed") ? document.getElementById("p-diagnosed").value : "",
         hobbies: document.getElementById("p-hobbies") ? document.getElementById("p-hobbies").value : "",
@@ -433,7 +430,6 @@ window.switchTab = async function(tab) {
                     <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
                     <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
                     
-                    <!-- COUNTRY FIELD IS LOCKED & NOT EDITABLE -->
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 mb-1">Country (Locked permanently)</label>
                         <input type="text" value="${userData.country || ''}" disabled class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
@@ -631,10 +627,8 @@ window.switchTab = async function(tab) {
     else if (tab === 'delete') {
         if (confirm("Are you sure you want to completely delete your profile? This action cannot be undone.")) {
             try {
-                // Delete Firebase Auth account directly first
                 await deleteUser(currentUser);
                 
-                // Attempt to remove Firestore document safely
                 try {
                     await deleteDoc(doc(db, "users", currentUser.uid));
                 } catch (firestoreErr) {
@@ -644,7 +638,6 @@ window.switchTab = async function(tab) {
                 alert("Profile deleted successfully.");
                 window.location.reload();
             } catch (error) {
-                // Handle session expiration require-recent-login prompt
                 if (error.code === 'auth/requires-recent-login') {
                     const password = prompt("For security reasons, please enter your password to confirm profile deletion:");
                     if (password) {
