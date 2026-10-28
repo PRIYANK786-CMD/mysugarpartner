@@ -4,7 +4,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
-    sendEmailVerification, sendPasswordResetEmail, updatePassword, signOut, onAuthStateChanged 
+    sendEmailVerification, sendPasswordResetEmail, updatePassword, signOut, onAuthStateChanged,
+    deleteUser, EmailAuthProvider, reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, 
@@ -276,7 +277,6 @@ function initiatePaddleCheckout(user, country, imageUrl, isRenewal = false) {
         }
     });
 
-    // Listen to Paddle checkout events
     Paddle.Checkout.on('checkout.completed', async (data) => {
         const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
         
@@ -306,8 +306,8 @@ async function saveUserProfileToFirestore(user, country, imageUrl, subscriptionT
         profilePic: imageUrl,
         profileCompleted: true,
         isLive: true,
-        subscriptionType: subscriptionType, // "free" for India, "paid" for international
-        subscriptionExpiresAt: expiryTimestamp, // Timestamp 1 year out for paid users
+        subscriptionType: subscriptionType, 
+        subscriptionExpiresAt: expiryTimestamp, 
         blockedUsers: []
     };
 
@@ -445,7 +445,6 @@ window.switchTab = async function(tab) {
             await updateDoc(doc(db, "users", currentUser.uid), {
                 name: document.getElementById("e-name").value,
                 age: document.getElementById("e-age").value,
-                // Country is intentionally excluded so it can never be changed
                 interest: document.getElementById("e-interest").value,
                 diagnosedYear: document.getElementById("e-diagnosed").value,
                 hobbies: document.getElementById("e-hobbies").value,
@@ -605,11 +604,38 @@ window.switchTab = async function(tab) {
         }
     }
     else if (tab === 'delete') {
-        if (confirm("Are you sure you want to completely delete your profile?")) {
-            await deleteDoc(doc(db, "users", currentUser.uid));
-            await currentUser.delete();
-            alert("Profile deleted successfully.");
-            window.location.reload();
+        if (confirm("Are you sure you want to completely delete your profile? This action cannot be undone.")) {
+            try {
+                // 1. Delete Firestore user document first
+                await deleteDoc(doc(db, "users", currentUser.uid));
+
+                // 2. Try deleting Firebase Auth user
+                await deleteUser(currentUser);
+                
+                alert("Profile deleted successfully.");
+                window.location.reload();
+            } catch (error) {
+                if (error.code === 'auth/requires-recent-login') {
+                    const password = prompt("For security reasons, please enter your password again to confirm profile deletion:");
+                    if (password) {
+                        try {
+                            const credential = EmailAuthProvider.credential(currentUser.email, password);
+                            await reauthenticateWithCredential(currentUser, credential);
+                            
+                            // Retry deletion after re-auth
+                            await deleteDoc(doc(db, "users", currentUser.uid));
+                            await deleteUser(currentUser);
+                            
+                            alert("Profile deleted successfully.");
+                            window.location.reload();
+                        } catch (reAuthErr) {
+                            alert("Re-authentication failed: " + reAuthErr.message);
+                        }
+                    }
+                } else {
+                    alert("Error deleting profile: " + error.message);
+                }
+            }
         }
     }
 };
