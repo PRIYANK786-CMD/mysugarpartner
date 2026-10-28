@@ -184,8 +184,8 @@ function renderVerificationPendingView(user) {
             <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
                 <div class="bg-white p-8 rounded-2xl shadow-lg w-full">
                     <h2 class="text-2xl font-bold text-red-500 mb-4">Email Verification Required</h2>
-                    <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it, then click below.</p>
-                    <button onclick="window.location.reload()" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3">I Have Verified, Continue</button>
+                    <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it in your inbox, then click below.</p>
+                    <button id="check-verification-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3 hover:bg-pink-700 transition">I Have Verified, Continue</button>
                     <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
                 </div>
             </div>
@@ -194,6 +194,31 @@ function renderVerificationPendingView(user) {
             </footer>
         </div>
     `;
+
+    document.getElementById("check-verification-btn").addEventListener("click", async () => {
+        try {
+            const btn = document.getElementById("check-verification-btn");
+            btn.innerText = "Checking verification...";
+            btn.disabled = true;
+
+            // Fetch latest user status directly from Firebase authentication servers
+            await user.reload();
+
+            if (auth.currentUser.emailVerified) {
+                alert("Email verified successfully!");
+                window.location.reload(); 
+            } else {
+                alert("Email not verified yet. Please click the link sent to your inbox first.");
+                btn.innerText = "I Have Verified, Continue";
+                btn.disabled = false;
+            }
+        } catch (error) {
+            alert("Error checking verification: " + error.message);
+            const btn = document.getElementById("check-verification-btn");
+            btn.innerText = "I Have Verified, Continue";
+            btn.disabled = false;
+        }
+    });
 }
 
 function renderProfileCreationView(user) {
@@ -603,9 +628,6 @@ window.switchTab = async function(tab) {
             }
         }
     }
-    // ==========================================
-    // UPDATED DELETE BLOCK (HANDLES PERMISSIONS & RE-AUTH)
-    // ==========================================
     else if (tab === 'delete') {
         if (confirm("Are you sure you want to completely delete your profile? This action cannot be undone.")) {
             try {
@@ -648,6 +670,14 @@ window.switchTab = async function(tab) {
             }
         }
     }
+};
+
+window.sendRequest = async function(receiverId) {
+    const senderId = auth.currentUser.uid;
+    await setDoc(doc(db, "requests", `${senderId}_${receiverId}`), {
+        senderId, receiverId, status: "pending", timestamp: Date.now()
+    });
+    alert("Buddy request sent successfully!");
 };
 
 window.respondRequest = async function(reqId, status) {
