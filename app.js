@@ -29,6 +29,17 @@ window.auth = auth;
 const appContainer = document.getElementById("app");
 
 // ==========================================
+// PADDLE BILLING INITIALIZATION
+// Replace 'YOUR_PADDLE_CLIENT_TOKEN' and 'YOUR_PADDLE_PRICE_ID' with your Paddle credentials
+// ==========================================
+const PADDLE_CLIENT_TOKEN = "YOUR_PADDLE_CLIENT_TOKEN"; 
+const PADDLE_PRICE_ID = "YOUR_PADDLE_PRICE_ID"; // $10/year Price ID
+
+if (window.Paddle) {
+    Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN });
+}
+
+// ==========================================
 // SECTION 2: CONSTANTS & WEBRTC STATE
 // ==========================================
 const countries = [
@@ -63,7 +74,7 @@ let localStream = null;
 let activeCallId = null;
 let callDocUnsubscribe = null;
 let activeChatUnsubscribe = null;
-let currentActiveBuddyId = null; // Tracks currently active chat room to prevent conversation breaks
+let currentActiveBuddyId = null; 
 
 const rtcConfig = {
     iceServers: [
@@ -84,6 +95,15 @@ onAuthStateChanged(auth, async (user) => {
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 renderProfileCreationView(user);
             } else {
+                const userData = userDoc.data();
+                
+                // Subscription Check: International users pay $10/year, expired accounts must renew
+                if (userData.country !== "India" && userData.subscriptionExpiresAt && Date.now() > userData.subscriptionExpiresAt) {
+                    alert("Your 1-year international subscription ($10/year) has expired. Please renew to continue accessing the app.");
+                    initiatePaddleCheckout(user, userData.country, userData.profilePic, true);
+                    return;
+                }
+
                 renderMainDashboard(user);
                 listenForIncomingCalls(user.uid);
             }
@@ -180,7 +200,8 @@ function renderProfileCreationView(user) {
     appContainer.innerHTML = `
         <div class="flex flex-col justify-between min-h-screen">
             <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full">
-                <h2 class="text-2xl font-bold text-pink-600 mb-6">Create Your Type 1 Profile ❤️</h2>
+                <h2 class="text-2xl font-bold text-pink-600 mb-2">Create Your Type 1 Profile ❤️</h2>
+                <p class="text-xs text-gray-500 mb-6">Free for Indian Users. $10/year Subscription for International Users.</p>
                 <div class="space-y-4">
                     <input type="text" id="p-name" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg">
                     <input type="number" id="p-age" placeholder="Age" class="w-full px-4 py-2 border rounded-lg">
@@ -197,7 +218,7 @@ function renderProfileCreationView(user) {
                         <label class="block text-sm text-gray-600 mb-1">Profile Picture</label>
                         <input type="file" id="p-img" accept="image/*" class="w-full">
                     </div>
-                    <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save Profile</button>
+                    <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save & Complete Profile</button>
                 </div>
             </div>
             <footer class="text-center text-xs text-gray-500 py-4 border-t w-full bg-white">
@@ -207,31 +228,93 @@ function renderProfileCreationView(user) {
     `;
 
     document.getElementById("save-profile-btn").addEventListener("click", async () => {
+        const country = document.getElementById("p-country").value;
+        const name = document.getElementById("p-name").value;
+
+        if (!name) {
+            alert("Please enter your name.");
+            return;
+        }
+
         const fileInput = document.getElementById("p-img");
         let imageUrl = "";
         if (fileInput.files[0]) {
             imageUrl = await convertImageToBase64(fileInput.files[0]);
         }
 
-        const profileData = {
-            uid: user.uid,
-            email: user.email,
-            name: document.getElementById("p-name").value,
-            age: document.getElementById("p-age").value,
-            country: document.getElementById("p-country").value,
-            interest: document.getElementById("p-interest").value,
-            diagnosedYear: document.getElementById("p-diagnosed").value,
-            hobbies: document.getElementById("p-hobbies").value,
-            profilePic: imageUrl,
-            profileCompleted: true,
-            isLive: true,
-            blockedUsers: []
-        };
-
-        await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
-        renderMainDashboard(user);
-        listenForIncomingCalls(user.uid);
+        // Indian users get free lifetime access; International users trigger Paddle checkout ($10/year)
+        if (country === "India") {
+            await saveUserProfileToFirestore(user, country, imageUrl, "free", null);
+        } else {
+            initiatePaddleCheckout(user, country, imageUrl, false);
+        }
     });
+}
+
+function initiatePaddleCheckout(user, country, imageUrl, isRenewal = false) {
+    if (!window.Paddle) {
+        alert("Paddle Checkout SDK is loading. Please try again in a few seconds.");
+        return;
+    }
+
+    Paddle.Checkout.open({
+        items: [
+            {
+                priceId: PADDLE_PRICE_ID,
+                quantity: 1
+            }
+        ],
+        customer: {
+            email: user.email,
+        },
+        customData: {
+            uid: user.uid,
+            country: country
+        },
+        settings: {
+            displayMode: "overlay"
+        }
+    });
+
+    // Listen to Paddle checkout events
+    Paddle.Checkout.on('checkout.completed', async (data) => {
+        const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
+        
+        if (isRenewal) {
+            await updateDoc(doc(db, "users", user.uid), {
+                subscriptionExpiresAt: oneYearFromNow,
+                subscriptionType: "paid"
+            });
+            alert("Subscription successfully renewed for 1 year!");
+            renderMainDashboard(user);
+        } else {
+            await saveUserProfileToFirestore(user, country, imageUrl, "paid", oneYearFromNow);
+        }
+    });
+}
+
+async function saveUserProfileToFirestore(user, country, imageUrl, subscriptionType, expiryTimestamp) {
+    const profileData = {
+        uid: user.uid,
+        email: user.email,
+        name: document.getElementById("p-name") ? document.getElementById("p-name").value : "",
+        age: document.getElementById("p-age") ? document.getElementById("p-age").value : "",
+        country: country, // Locked permanently after selection
+        interest: document.getElementById("p-interest") ? document.getElementById("p-interest").value : "",
+        diagnosedYear: document.getElementById("p-diagnosed") ? document.getElementById("p-diagnosed").value : "",
+        hobbies: document.getElementById("p-hobbies") ? document.getElementById("p-hobbies").value : "",
+        profilePic: imageUrl,
+        profileCompleted: true,
+        isLive: true,
+        subscriptionType: subscriptionType, // "free" for India, "paid" for international
+        subscriptionExpiresAt: expiryTimestamp, // Timestamp 1 year out for paid users
+        blockedUsers: []
+    };
+
+    await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
+    alert("Profile created successfully!");
+    renderMainDashboard(user);
+    listenForIncomingCalls(user.uid);
 }
 
 function convertImageToBase64(file) {
@@ -301,27 +384,36 @@ window.switchTab = async function(tab) {
     const userData = userDocSnap.data();
 
     if (tab === 'profile') {
+        const subStatusText = userData.country === "India" ? "Free Access (India)" : `Paid Subscription ($10/yr) - Expires: ${new Date(userData.subscriptionExpiresAt).toLocaleDateString()}`;
         container.innerHTML = `
             <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow border text-center">
                 <h2 class="text-2xl font-bold text-pink-600 mb-4">My Profile Card</h2>
                 <img src="${userData.profilePic || 'https://via.placeholder.com/150'}" class="w-32 h-32 mx-auto rounded-full object-cover mb-4 border-4 border-pink-100">
                 <h3 class="font-bold text-xl">${userData.name || 'User'}, ${userData.age || ''}</h3>
-                <p class="text-gray-500 text-sm mt-1">Country: ${userData.country || ''}</p>
+                <p class="text-gray-500 text-sm mt-1">Country: <b>${userData.country || ''}</b></p>
                 <p class="text-pink-600 font-medium text-sm mt-1">Looking for: ${userData.interest || ''}</p>
                 <p class="text-gray-600 text-xs mt-2">Diagnosed Year: ${userData.diagnosedYear || ''}</p>
                 <p class="text-gray-600 text-xs mt-1">Hobbies: ${userData.hobbies || ''}</p>
+                <div class="mt-4 pt-4 border-t text-xs text-gray-400">
+                    Membership: <span class="text-pink-600 font-semibold">${subStatusText}</span>
+                </div>
             </div>
         `;
     }
     else if (tab === 'edit') {
-        let countryOptions = countries.map(c => `<option value="${c}" ${userData.country === c ? 'selected' : ''}>${c}</option>`).join('');
         container.innerHTML = `
             <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Edit Profile</h2>
                 <div class="space-y-4">
                     <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
                     <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
-                    <select id="e-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
+                    
+                    <!-- COUNTRY FIELD IS LOCKED & NOT EDITABLE -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Country (Locked permanently)</label>
+                        <input type="text" value="${userData.country || ''}" disabled class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
+                    </div>
+
                     <select id="e-interest" class="w-full px-4 py-2 border rounded-lg">
                         <option value="Dating" ${userData.interest === 'Dating' ? 'selected' : ''}>Dating</option>
                         <option value="Short-term relationship" ${userData.interest === 'Short-term relationship' ? 'selected' : ''}>Short-term relationship</option>
@@ -353,7 +445,7 @@ window.switchTab = async function(tab) {
             await updateDoc(doc(db, "users", currentUser.uid), {
                 name: document.getElementById("e-name").value,
                 age: document.getElementById("e-age").value,
-                country: document.getElementById("e-country").value,
+                // Country is intentionally excluded so it can never be changed
                 interest: document.getElementById("e-interest").value,
                 diagnosedYear: document.getElementById("e-diagnosed").value,
                 hobbies: document.getElementById("e-hobbies").value,
@@ -487,7 +579,7 @@ window.switchTab = async function(tab) {
                 
                 const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
                 onSnapshot(msgQuery, (snapshot) => {
-                    if (currentActiveBuddyId === buddyId) return; // Skip badge if chat is already open
+                    if (currentActiveBuddyId === buddyId) return;
 
                     let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
                     let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
@@ -590,7 +682,6 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    // Real-time Firestore listener with client-side timestamp sorting
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
