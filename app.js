@@ -342,6 +342,46 @@ function renderProfileCreationView(user) {
     });
 }
 
+// ==========================================
+// PADDLE CHECKOUT HANDLER
+// ==========================================
+async function initiatePaddleCheckout(user, country, imageUrl, isRenewal = false) {
+    if (!window.Paddle) {
+        alert("Paddle billing SDK is not loaded yet. Please check your connection and try again.");
+        return;
+    }
+
+    const name = document.getElementById("p-name") ? document.getElementById("p-name").value : (user.displayName || "Subscriber");
+
+    Paddle.Checkout.open({
+        items: [
+            {
+                priceId: PADDLE_PRICE_ID,
+                quantity: 1
+            }
+        ],
+        customer: {
+            email: user.email,
+            name: name
+        },
+        settings: {
+            successUrl: window.location.origin + window.location.pathname + "?success=true"
+        },
+        customData: {
+            uid: user.uid,
+            country: country,
+            profilePic: imageUrl || ""
+        }
+    });
+
+    // Event listener for successful checkout completion
+    Paddle.Checkout.on('checkout.completed', async function(data) {
+        const expiryTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000); // 1 year from now
+        await saveUserProfileToFirestore(user, country, imageUrl, "paid", expiryTimestamp);
+        alert("Payment successful! Your international membership is now active.");
+    });
+}
+
 async function saveUserProfileToFirestore(user, country, imageUrl, subscriptionType, expiryTimestamp) {
     const profileData = {
         uid: user.uid,
@@ -396,7 +436,7 @@ function renderMainDashboard(user) {
         <div class="flex flex-col min-h-screen justify-between">
             <div>
                 <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.love ❤️</h1>
+                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.in ❤️</h1>
                     <div class="flex space-x-6 text-sm font-medium items-center">
                         <button onclick="switchTab('profile')" class="hover:text-pink-600">My Profile</button>
                         <button onclick="switchTab('edit')" class="hover:text-pink-600">Edit Profile</button>
