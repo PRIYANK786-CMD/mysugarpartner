@@ -222,9 +222,10 @@ function renderVerificationPendingView(user) {
 
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
+    
     appContainer.innerHTML = `
         <div class="flex flex-col justify-between min-h-screen">
-            <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full">
+            <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full relative">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Create Your Type 1 Profile ❤️</h2>
                 <div class="space-y-4">
                     <input type="text" id="p-name" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg">
@@ -242,17 +243,85 @@ function renderProfileCreationView(user) {
                         <label class="block text-sm text-gray-600 mb-1">Profile Picture</label>
                         <input type="file" id="p-img" accept="image/*" class="w-full">
                     </div>
-                    <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save & Complete Profile</button>
+
+                    <!-- TERMS & CONDITIONS CHECKBOX -->
+                    <div class="flex items-start space-x-2 pt-2">
+                        <input type="checkbox" id="p-terms" class="mt-1 h-4 w-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
+                        <label for="p-terms" class="text-sm text-gray-600">
+                            I agree to the <button id="open-terms-btn" type="button" class="text-pink-600 font-semibold underline hover:text-pink-700">Terms & Conditions</button>.
+                        </label>
+                    </div>
+
+                    <button id="save-profile-btn" disabled class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 opacity-50 cursor-not-allowed transition">Save & Complete Profile</button>
                 </div>
             </div>
+
+            <!-- TERMS & CONDITIONS MODAL -->
+            <div id="terms-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+                <div class="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
+                    <h3 class="text-xl font-bold text-pink-600 mb-4" id="terms-title">Terms & Conditions</h3>
+                    <div class="text-sm text-gray-700 space-y-3" id="terms-content"></div>
+                    <div class="mt-6 flex justify-end">
+                        <button id="close-terms-btn" type="button" class="bg-pink-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-pink-700">I Understand & Close</button>
+                    </div>
+                </div>
+            </div>
+
             <footer class="text-center text-xs text-gray-500 py-4 border-t w-full bg-white">
                 Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
             </footer>
         </div>
     `;
 
-    document.getElementById("save-profile-btn").addEventListener("click", async () => {
-        const country = document.getElementById("p-country").value;
+    const termsCheckbox = document.getElementById("p-terms");
+    const saveBtn = document.getElementById("save-profile-btn");
+    const openTermsBtn = document.getElementById("open-terms-btn");
+    const closeTermsBtn = document.getElementById("close-terms-btn");
+    const termsModal = document.getElementById("terms-modal");
+    const termsContent = document.getElementById("terms-content");
+    const countrySelect = document.getElementById("p-country");
+
+    // Enable/Disable Save Button based on Checkbox
+    termsCheckbox.addEventListener("change", (e) => {
+        if (e.target.checked) {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        } else {
+            saveBtn.disabled = true;
+            saveBtn.classList.add("opacity-50", "cursor-not-allowed");
+        }
+    });
+
+    // Open Modal and render country-specific Terms & Conditions
+    openTermsBtn.addEventListener("click", () => {
+        const selectedCountry = countrySelect.value;
+        if (selectedCountry === "India") {
+            termsContent.innerHTML = `
+                <p><b>1. User Responsibility & Risk:</b> Users join and interact on the platform entirely at their own risk.</p>
+                <p><b>2. Community Standards:</b> Any unusual, harmful, abusive, or misleading behavior toward other users is strictly prohibited and will result in an immediate permanent account ban.</p>
+            `;
+        } else {
+            termsContent.innerHTML = `
+                <p><b>1. User Responsibility & Risk:</b> Users join and interact on the platform entirely at their own risk.</p>
+                <p><b>2. Community Standards:</b> Any unusual, harmful, abusive, or misleading behavior toward other users is strictly prohibited and will result in an immediate permanent account ban.</p>
+                <p><b>3. No-Refund Policy:</b> All subscription payments ($10/year) are strictly non-refundable under any circumstances once processed.</p>
+            `;
+        }
+        termsModal.classList.remove("hidden");
+    });
+
+    closeTermsBtn.addEventListener("click", () => {
+        termsModal.classList.add("hidden");
+    });
+
+    // Save Profile Handler
+    saveBtn.addEventListener("click", async () => {
+        if (!termsCheckbox.checked) {
+            alert("You must accept the Terms & Conditions to proceed.");
+            return;
+        }
+
+        const country = countrySelect.value;
         const name = document.getElementById("p-name").value;
 
         if (!name) {
@@ -270,47 +339,6 @@ function renderProfileCreationView(user) {
             await saveUserProfileToFirestore(user, country, imageUrl, "free", null);
         } else {
             initiatePaddleCheckout(user, country, imageUrl, false);
-        }
-    });
-}
-
-function initiatePaddleCheckout(user, country, imageUrl, isRenewal = false) {
-    if (!window.Paddle) {
-        alert("Paddle Checkout SDK is loading. Please try again in a few seconds.");
-        return;
-    }
-
-    Paddle.Checkout.open({
-        items: [
-            {
-                priceId: PADDLE_PRICE_ID,
-                quantity: 1
-            }
-        ],
-        customer: {
-            email: user.email,
-        },
-        customData: {
-            uid: user.uid,
-            country: country
-        },
-        settings: {
-            displayMode: "overlay"
-        }
-    });
-
-    Paddle.Checkout.on('checkout.completed', async (data) => {
-        const oneYearFromNow = Date.now() + (365 * 24 * 60 * 60 * 1000);
-        
-        if (isRenewal) {
-            await updateDoc(doc(db, "users", user.uid), {
-                subscriptionExpiresAt: oneYearFromNow,
-                subscriptionType: "paid"
-            });
-            alert("Subscription successfully renewed for 1 year!");
-            renderMainDashboard(user);
-        } else {
-            await saveUserProfileToFirestore(user, country, imageUrl, "paid", oneYearFromNow);
         }
     });
 }
