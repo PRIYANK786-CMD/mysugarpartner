@@ -31,10 +31,9 @@ const appContainer = document.getElementById("app");
 
 // ==========================================
 // PADDLE BILLING INITIALIZATION
-// Replace 'YOUR_PADDLE_CLIENT_TOKEN' and 'YOUR_PADDLE_PRICE_ID' with your Paddle credentials
 // ==========================================
-const PADDLE_CLIENT_TOKEN = "YOUR_PADDLE_CLIENT_TOKEN"; 
-const PADDLE_PRICE_ID = "YOUR_PADDLE_PRICE_ID"; // $10/year Price ID
+const PADDLE_CLIENT_TOKEN = "live_206683fbd1b7ae341a40534cb92"; 
+const PADDLE_PRICE_ID = "pri_01m65jy9s6tbvpb8kpk7v101yv"; // $10/year Price ID
 
 if (window.Paddle) {
     Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN });
