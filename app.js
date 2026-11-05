@@ -4,8 +4,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
-    sendEmailVerification, sendPasswordResetEmail, updatePassword, signOut, onAuthStateChanged,
-    deleteUser, EmailAuthProvider, reauthenticateWithCredential
+    sendEmailVerification, sendPasswordResetEmail, updatePassword, signOut, onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, 
@@ -28,16 +27,6 @@ const db = getFirestore(app);
 
 window.auth = auth;
 const appContainer = document.getElementById("app");
-
-// ==========================================
-// PADDLE BILLING INITIALIZATION
-// ==========================================
-const PADDLE_CLIENT_TOKEN = "live_206683fbd1b7ae341a40534cb92"; 
-const PADDLE_PRICE_ID = "pri_01m65jy9s6tbvpb8kpk7v101yv"; // $10/year Price ID
-
-if (window.Paddle) {
-    Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN });
-}
 
 // ==========================================
 // SECTION 2: CONSTANTS & WEBRTC STATE
@@ -74,7 +63,7 @@ let localStream = null;
 let activeCallId = null;
 let callDocUnsubscribe = null;
 let activeChatUnsubscribe = null;
-let currentActiveBuddyId = null; 
+let currentActiveBuddyId = null; // Tracks currently active chat room to prevent conversation breaks
 
 const rtcConfig = {
     iceServers: [
@@ -95,15 +84,6 @@ onAuthStateChanged(auth, async (user) => {
             if (!userDoc.exists() || !userDoc.data().profileCompleted) {
                 renderProfileCreationView(user);
             } else {
-                const userData = userDoc.data();
-                
-                // Subscription Check: International users pay $10/year, expired accounts must renew
-                if (userData.country !== "India" && userData.subscriptionExpiresAt && Date.now() > userData.subscriptionExpiresAt) {
-                    alert("Your 1-year international subscription ($10/year) has expired. Please renew to continue accessing the app.");
-                    initiatePaddleCheckout(user, userData.country, userData.profilePic, true);
-                    return;
-                }
-
                 renderMainDashboard(user);
                 listenForIncomingCalls(user.uid);
             }
@@ -183,8 +163,8 @@ function renderVerificationPendingView(user) {
             <div class="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
                 <div class="bg-white p-8 rounded-2xl shadow-lg w-full">
                     <h2 class="text-2xl font-bold text-red-500 mb-4">Email Verification Required</h2>
-                    <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it in your inbox, then click below.</p>
-                    <button id="check-verification-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3 hover:bg-pink-700 transition">I Have Verified, Continue</button>
+                    <p class="text-gray-600 mb-6">We sent a verification link to <b>${user.email}</b>. Confirm it, then click below.</p>
+                    <button onclick="window.location.reload()" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold mb-3">I Have Verified, Continue</button>
                     <button onclick="handleLogout()" class="text-gray-500 text-sm hover:underline">Reject / Sign Out</button>
                 </div>
             </div>
@@ -193,38 +173,13 @@ function renderVerificationPendingView(user) {
             </footer>
         </div>
     `;
-
-    document.getElementById("check-verification-btn").addEventListener("click", async () => {
-        try {
-            const btn = document.getElementById("check-verification-btn");
-            btn.innerText = "Checking verification...";
-            btn.disabled = true;
-
-            await user.reload();
-
-            if (auth.currentUser.emailVerified) {
-                alert("Email verified successfully!");
-                window.location.reload(); 
-            } else {
-                alert("Email not verified yet. Please click the link sent to your inbox first.");
-                btn.innerText = "I Have Verified, Continue";
-                btn.disabled = false;
-            }
-        } catch (error) {
-            alert("Error checking verification: " + error.message);
-            const btn = document.getElementById("check-verification-btn");
-            btn.innerText = "I Have Verified, Continue";
-            btn.disabled = false;
-        }
-    });
 }
 
 function renderProfileCreationView(user) {
     let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
-    
     appContainer.innerHTML = `
         <div class="flex flex-col justify-between min-h-screen">
-            <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full relative">
+            <div class="max-w-xl mx-auto bg-white my-10 p-8 rounded-2xl shadow-xl w-full">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Create Your Type 1 Profile ❤️</h2>
                 <div class="space-y-4">
                     <input type="text" id="p-name" placeholder="Full Name" class="w-full px-4 py-2 border rounded-lg">
@@ -242,168 +197,41 @@ function renderProfileCreationView(user) {
                         <label class="block text-sm text-gray-600 mb-1">Profile Picture</label>
                         <input type="file" id="p-img" accept="image/*" class="w-full">
                     </div>
-
-                    <!-- TERMS & CONDITIONS CHECKBOX -->
-                    <div class="flex items-start space-x-2 pt-2">
-                        <input type="checkbox" id="p-terms" class="mt-1 h-4 w-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
-                        <label for="p-terms" class="text-sm text-gray-600">
-                            I agree to the <button id="open-terms-btn" type="button" class="text-pink-600 font-semibold underline hover:text-pink-700">Terms & Conditions</button>.
-                        </label>
-                    </div>
-
-                    <button id="save-profile-btn" disabled class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 opacity-50 cursor-not-allowed transition">Save & Complete Profile</button>
+                    <button id="save-profile-btn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700">Save Profile</button>
                 </div>
             </div>
-
-            <!-- TERMS & CONDITIONS MODAL -->
-            <div id="terms-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-                <div class="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl relative">
-                    <h3 class="text-xl font-bold text-pink-600 mb-4" id="terms-title">Terms & Conditions</h3>
-                    <div class="text-sm text-gray-700 space-y-3" id="terms-content"></div>
-                    <div class="mt-6 flex justify-end">
-                        <button id="close-terms-btn" type="button" class="bg-pink-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-pink-700">I Understand & Close</button>
-                    </div>
-                </div>
-            </div>
-
             <footer class="text-center text-xs text-gray-500 py-4 border-t w-full bg-white">
                 Designed & Developed By MR. PRIYANK PANCHAL. All Rights Reserved.
             </footer>
         </div>
     `;
 
-    const termsCheckbox = document.getElementById("p-terms");
-    const saveBtn = document.getElementById("save-profile-btn");
-    const openTermsBtn = document.getElementById("open-terms-btn");
-    const closeTermsBtn = document.getElementById("close-terms-btn");
-    const termsModal = document.getElementById("terms-modal");
-    const termsContent = document.getElementById("terms-content");
-    const countrySelect = document.getElementById("p-country");
-
-    // Enable/Disable Save Button based on Checkbox
-    termsCheckbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-            saveBtn.disabled = false;
-            saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
-        } else {
-            saveBtn.disabled = true;
-            saveBtn.classList.add("opacity-50", "cursor-not-allowed");
-        }
-    });
-
-    // Open Modal and render country-specific Terms & Conditions
-    openTermsBtn.addEventListener("click", () => {
-        const selectedCountry = countrySelect.value;
-        if (selectedCountry === "India") {
-            termsContent.innerHTML = `
-                <p><b>1. User Responsibility & Risk:</b> Users join and interact on the platform entirely at their own risk.</p>
-                <p><b>2. Community Standards:</b> Any unusual, harmful, abusive, or misleading behavior toward other users is strictly prohibited and will result in an immediate permanent account ban.</p>
-            `;
-        } else {
-            termsContent.innerHTML = `
-                <p><b>1. User Responsibility & Risk:</b> Users join and interact on the platform entirely at their own risk.</p>
-                <p><b>2. Community Standards:</b> Any unusual, harmful, abusive, or misleading behavior toward other users is strictly prohibited and will result in an immediate permanent account ban.</p>
-                <p><b>3. No-Refund Policy:</b> All subscription payments ($10/year) are strictly non-refundable under any circumstances once processed.</p>
-            `;
-        }
-        termsModal.classList.remove("hidden");
-    });
-
-    closeTermsBtn.addEventListener("click", () => {
-        termsModal.classList.add("hidden");
-    });
-
-    // Save Profile Handler
-    saveBtn.addEventListener("click", async () => {
-        if (!termsCheckbox.checked) {
-            alert("You must accept the Terms & Conditions to proceed.");
-            return;
-        }
-
-        const country = countrySelect.value;
-        const name = document.getElementById("p-name").value;
-
-        if (!name) {
-            alert("Please enter your name.");
-            return;
-        }
-
+    document.getElementById("save-profile-btn").addEventListener("click", async () => {
         const fileInput = document.getElementById("p-img");
         let imageUrl = "";
         if (fileInput.files[0]) {
             imageUrl = await convertImageToBase64(fileInput.files[0]);
         }
 
-        if (country === "India") {
-            await saveUserProfileToFirestore(user, country, imageUrl, "free", null);
-        } else {
-            initiatePaddleCheckout(user, country, imageUrl, false);
-        }
-    });
-}
-
-// ==========================================
-// PADDLE CHECKOUT HANDLER
-// ==========================================
-async function initiatePaddleCheckout(user, country, imageUrl, isRenewal = false) {
-    if (!window.Paddle) {
-        alert("Paddle billing SDK is not loaded yet. Please check your connection and try again.");
-        return;
-    }
-
-    const name = document.getElementById("p-name") ? document.getElementById("p-name").value : (user.displayName || "Subscriber");
-
-    Paddle.Checkout.open({
-        items: [
-            {
-                priceId: PADDLE_PRICE_ID,
-                quantity: 1
-            }
-        ],
-        customer: {
-            email: user.email,
-            name: name
-        },
-        settings: {
-            successUrl: window.location.origin + window.location.pathname + "?success=true"
-        },
-        customData: {
+        const profileData = {
             uid: user.uid,
-            country: country,
-            profilePic: imageUrl || ""
-        }
+            email: user.email,
+            name: document.getElementById("p-name").value,
+            age: document.getElementById("p-age").value,
+            country: document.getElementById("p-country").value,
+            interest: document.getElementById("p-interest").value,
+            diagnosedYear: document.getElementById("p-diagnosed").value,
+            hobbies: document.getElementById("p-hobbies").value,
+            profilePic: imageUrl,
+            profileCompleted: true,
+            isLive: true,
+            blockedUsers: []
+        };
+
+        await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
+        renderMainDashboard(user);
+        listenForIncomingCalls(user.uid);
     });
-
-    // Event listener for successful checkout completion
-    Paddle.Checkout.on('checkout.completed', async function(data) {
-        const expiryTimestamp = Date.now() + (365 * 24 * 60 * 60 * 1000); // 1 year from now
-        await saveUserProfileToFirestore(user, country, imageUrl, "paid", expiryTimestamp);
-        alert("Payment successful! Your international membership is now active.");
-    });
-}
-
-async function saveUserProfileToFirestore(user, country, imageUrl, subscriptionType, expiryTimestamp) {
-    const profileData = {
-        uid: user.uid,
-        email: user.email,
-        name: document.getElementById("p-name") ? document.getElementById("p-name").value : "",
-        age: document.getElementById("p-age") ? document.getElementById("p-age").value : "",
-        country: country, 
-        interest: document.getElementById("p-interest") ? document.getElementById("p-interest").value : "",
-        diagnosedYear: document.getElementById("p-diagnosed") ? document.getElementById("p-diagnosed").value : "",
-        hobbies: document.getElementById("p-hobbies") ? document.getElementById("p-hobbies").value : "",
-        profilePic: imageUrl,
-        profileCompleted: true,
-        isLive: true,
-        subscriptionType: subscriptionType, 
-        subscriptionExpiresAt: expiryTimestamp, 
-        blockedUsers: []
-    };
-
-    await setDoc(doc(db, "users", user.uid), profileData, { merge: true });
-    alert("Profile created successfully!");
-    renderMainDashboard(user);
-    listenForIncomingCalls(user.uid);
 }
 
 function convertImageToBase64(file) {
@@ -436,7 +264,7 @@ function renderMainDashboard(user) {
         <div class="flex flex-col min-h-screen justify-between">
             <div>
                 <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.in ❤️</h1>
+                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.love ❤️</h1>
                     <div class="flex space-x-6 text-sm font-medium items-center">
                         <button onclick="switchTab('profile')" class="hover:text-pink-600">My Profile</button>
                         <button onclick="switchTab('edit')" class="hover:text-pink-600">Edit Profile</button>
@@ -473,35 +301,27 @@ window.switchTab = async function(tab) {
     const userData = userDocSnap.data();
 
     if (tab === 'profile') {
-        const subStatusText = userData.country === "India" ? "Free Access (India)" : `Paid Subscription ($10/yr) - Expires: ${new Date(userData.subscriptionExpiresAt).toLocaleDateString()}`;
         container.innerHTML = `
             <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow border text-center">
                 <h2 class="text-2xl font-bold text-pink-600 mb-4">My Profile Card</h2>
                 <img src="${userData.profilePic || 'https://via.placeholder.com/150'}" class="w-32 h-32 mx-auto rounded-full object-cover mb-4 border-4 border-pink-100">
                 <h3 class="font-bold text-xl">${userData.name || 'User'}, ${userData.age || ''}</h3>
-                <p class="text-gray-500 text-sm mt-1">Country: <b>${userData.country || ''}</b></p>
+                <p class="text-gray-500 text-sm mt-1">Country: ${userData.country || ''}</p>
                 <p class="text-pink-600 font-medium text-sm mt-1">Looking for: ${userData.interest || ''}</p>
                 <p class="text-gray-600 text-xs mt-2">Diagnosed Year: ${userData.diagnosedYear || ''}</p>
                 <p class="text-gray-600 text-xs mt-1">Hobbies: ${userData.hobbies || ''}</p>
-                <div class="mt-4 pt-4 border-t text-xs text-gray-400">
-                    Membership: <span class="text-pink-600 font-semibold">${subStatusText}</span>
-                </div>
             </div>
         `;
     }
     else if (tab === 'edit') {
+        let countryOptions = countries.map(c => `<option value="${c}" ${userData.country === c ? 'selected' : ''}>${c}</option>`).join('');
         container.innerHTML = `
             <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Edit Profile</h2>
                 <div class="space-y-4">
                     <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
                     <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
-                    
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-400 mb-1">Country (Locked permanently)</label>
-                        <input type="text" value="${userData.country || ''}" disabled class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed">
-                    </div>
-
+                    <select id="e-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
                     <select id="e-interest" class="w-full px-4 py-2 border rounded-lg">
                         <option value="Dating" ${userData.interest === 'Dating' ? 'selected' : ''}>Dating</option>
                         <option value="Short-term relationship" ${userData.interest === 'Short-term relationship' ? 'selected' : ''}>Short-term relationship</option>
@@ -533,6 +353,7 @@ window.switchTab = async function(tab) {
             await updateDoc(doc(db, "users", currentUser.uid), {
                 name: document.getElementById("e-name").value,
                 age: document.getElementById("e-age").value,
+                country: document.getElementById("e-country").value,
                 interest: document.getElementById("e-interest").value,
                 diagnosedYear: document.getElementById("e-diagnosed").value,
                 hobbies: document.getElementById("e-hobbies").value,
@@ -666,7 +487,7 @@ window.switchTab = async function(tab) {
                 
                 const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
                 onSnapshot(msgQuery, (snapshot) => {
-                    if (currentActiveBuddyId === buddyId) return;
+                    if (currentActiveBuddyId === buddyId) return; // Skip badge if chat is already open
 
                     let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
                     let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
@@ -692,42 +513,11 @@ window.switchTab = async function(tab) {
         }
     }
     else if (tab === 'delete') {
-        if (confirm("Are you sure you want to completely delete your profile? This action cannot be undone.")) {
-            try {
-                await deleteUser(currentUser);
-                
-                try {
-                    await deleteDoc(doc(db, "users", currentUser.uid));
-                } catch (firestoreErr) {
-                    console.warn("Firestore doc deletion skipped or pending rules update:", firestoreErr);
-                }
-
-                alert("Profile deleted successfully.");
-                window.location.reload();
-            } catch (error) {
-                if (error.code === 'auth/requires-recent-login') {
-                    const password = prompt("For security reasons, please enter your password to confirm profile deletion:");
-                    if (password) {
-                        try {
-                            const credential = EmailAuthProvider.credential(currentUser.email, password);
-                            await reauthenticateWithCredential(currentUser, credential);
-                            
-                            await deleteUser(currentUser);
-                            
-                            try {
-                                await deleteDoc(doc(db, "users", currentUser.uid));
-                            } catch (e) {}
-
-                            alert("Profile deleted successfully.");
-                            window.location.reload();
-                        } catch (reAuthErr) {
-                            alert("Re-authentication failed: " + reAuthErr.message);
-                        }
-                    }
-                } else {
-                    alert("Error deleting profile: " + error.message);
-                }
-            }
+        if (confirm("Are you sure you want to completely delete your profile?")) {
+            await deleteDoc(doc(db, "users", currentUser.uid));
+            await currentUser.delete();
+            alert("Profile deleted successfully.");
+            window.location.reload();
         }
     }
 };
@@ -800,6 +590,7 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
+    // Real-time Firestore listener with client-side timestamp sorting
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
