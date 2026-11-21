@@ -571,7 +571,7 @@ window.respondRequest = async function(reqId, status) {
 // ==========================================
 // SECTION 6: REALTIME CHAT SYSTEM
 // ==========================================
-let localPendingMessages = []; // Stores temporary sent messages until Firestore snapshot includes them
+const renderedMessageIds = new Set();
 
 function showNewMessageAlert(senderName, text, senderId) {
     const existing = document.getElementById("new-msg-toast");
@@ -603,7 +603,10 @@ function showNewMessageAlert(senderName, text, senderId) {
 }
 
 function listenForIncomingMessages(userId) {
-    if (globalMsgUnsubscribe) globalMsgUnsubscribe();
+    if (globalMsgUnsubscribe) {
+        globalMsgUnsubscribe();
+        globalMsgUnsubscribe = null;
+    }
     chatAppStartedAt = Date.now();
 
     if ("Notification" in window && Notification.permission === "default") {
@@ -613,25 +616,15 @@ function listenForIncomingMessages(userId) {
     const q = query(collection(db, "messages"), where("receiverId", "==", userId));
     globalMsgUnsubscribe = onSnapshot(q, async (snapshot) => {
         for (const change of snapshot.docChanges()) {
-            if (change.type !== "added" && change.type !== "modified") continue;
+            if (change.type !== "added") continue;
             const msgId = change.doc.id;
             const m = change.doc.data();
-
-            // If this buddy's chat is currently open, redraw immediately
-            if (currentActiveBuddyId === m.senderId && window.__activeChatContext) {
-                const ctx = window.__activeChatContext;
-                redrawMessagesBox(ctx.chatId, ctx.currentUid, ctx.myClearTime, ctx.latestDocs);
-                if (!m.read) {
-                    updateDoc(doc(db, "messages", msgId), { read: true }).catch(() => {});
-                }
-                continue;
-            }
 
             if (notifiedMessageIds.has(msgId)) continue;
             notifiedMessageIds.add(msgId);
 
             if ((m.timestamp || 0) < chatAppStartedAt - 2000) continue;
-            if (m.read) continue;
+            if (m.read || currentActiveBuddyId === m.senderId) continue;
 
             const senderSnap = await getDoc(doc(db, "users", m.senderId));
             const senderName = (senderSnap.exists() && senderSnap.data().name) || "Buddy";
@@ -643,62 +636,30 @@ function listenForIncomingMessages(userId) {
     });
 }
 
-function renderChatMessageBubble(msgBox, m, currentUid) {
+function appendMessageToBox(msgBox, msgId, m, currentUid) {
+    if (!msgBox || !msgId) return;
+    if (msgBox.querySelector(`[data-msg-id="${CSS.escape(msgId)}"]`)) return;
+
     const safeContent = escapeHtml(m.content || "");
     const safeFileName = escapeHtml(m.fileName || "file");
     let contentHtml = `<p class="break-words">${safeContent}</p>`;
 
-    if (m.type === 'image') {
+    if (m.type === "image") {
         contentHtml = `<img src="${m.content}" alt="${safeFileName}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="${safeFileName}" class="text-xs text-blue-500 underline">Save Image</a>`;
-    } else if (m.type === 'file') {
+    } else if (m.type === "file") {
         contentHtml = `<a href="${m.content}" download="${safeFileName}" class="text-blue-500 underline text-sm">📥 Download ${safeFileName}</a>`;
     }
 
     const isMe = m.senderId === currentUid;
-    const bubbleStyle = isMe ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
+    const bubbleStyle = isMe ? "bg-pink-100 text-gray-800" : "bg-gray-100 text-gray-800";
 
-    msgBox.innerHTML += `
-        <div class="flex ${isMe ? 'justify-end' : 'justify-start'} w-full">
-            <div class="${bubbleStyle} p-3 rounded-xl max-w-xs">
-                ${contentHtml}
-            </div>
-        </div>
-    `;
-}
+    const row = document.createElement("div");
+    row.className = `flex ${isMe ? "justify-end" : "justify-start"} w-full`;
+    row.setAttribute("data-msg-id", msgId);
+    row.dataset.timestamp = String(m.timestamp || 0);
+    row.innerHTML = `<div class="${bubbleStyle} p-3 rounded-xl max-w-xs">${contentHtml}</div>`;
 
-function redrawMessagesBox(chatId, currentUid, myClearTime, firestoreDocs = []) {
-    const msgBox = document.getElementById("messages-box");
-    if (!msgBox) return;
-
-    // Deduplicate Firestore docs by ID
-    const uniqueFirestoreMap = new Map();
-    firestoreDocs.forEach(d => {
-        if (d.id) uniqueFirestoreMap.set(d.id, d);
-    });
-    const cleanFirestoreDocs = Array.from(uniqueFirestoreMap.values());
-
-    const syncedKeys = new Set(
-        cleanFirestoreDocs.map(d => `${d.senderId}_${d.type}_${d.content}`)
-    );
-    localPendingMessages = localPendingMessages.filter(
-        pm => pm.chatId !== chatId || !syncedKeys.has(`${pm.senderId}_${pm.type}_${pm.content}`)
-    );
-
-    const activePending = localPendingMessages.filter(
-        pm => pm.chatId === chatId && (pm.timestamp || 0) > myClearTime
-    );
-
-    const combined = [
-        ...cleanFirestoreDocs.filter(m => (m.timestamp || 0) > myClearTime),
-        ...activePending
-    ];
-
-    combined.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-    msgBox.innerHTML = "";
-    combined.forEach(m => {
-        renderChatMessageBubble(msgBox, m, currentUid);
-    });
+    msgBox.appendChild(row);
     msgBox.scrollTop = msgBox.scrollHeight;
 }
 
@@ -707,8 +668,8 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
 
     const buddyEl = document.getElementById(`buddy-item-${buddyId}`);
     if (buddyEl) {
-        const badgeContainer = buddyEl.querySelector('.buddy-badge');
-        if (badgeContainer) badgeContainer.innerHTML = '';
+        const badgeContainer = buddyEl.querySelector(".buddy-badge");
+        if (badgeContainer) badgeContainer.innerHTML = "";
     }
 
     if (activeChatUnsubscribe) {
@@ -717,24 +678,12 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     }
 
     const currentUid = auth.currentUser ? auth.currentUser.uid : null;
-    if (!currentUid) {
-        console.error("openChat called with no authenticated user.");
-        return;
-    }
+    if (!currentUid) return;
 
-    const chatId = [currentUid, buddyId].sort().join('_');
-
-    // Initialize context right away so messages work even before chatMeta finishes reading
-    const chatContext = {
-        chatId,
-        currentUid,
-        myClearTime: 0,
-        latestDocs: []
-    };
-    window.__activeChatContext = chatContext;
-
+    const chatId = [currentUid, buddyId].sort().join("_");
     const safeBuddyName = escapeHtml(buddyName || "Buddy");
     const container = document.getElementById("chat-window-container");
+
     container.innerHTML = `
         <div class="flex justify-between items-center border-b pb-3 mb-2">
             <h3 id="chat-buddy-title" class="font-bold text-lg">${safeBuddyName}</h3>
@@ -765,38 +714,43 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    // Attach real-time messages listener immediately
+    let myClearTime = 0;
+    try {
+        const chatMetaSnap = await getDoc(doc(db, "chatMeta", chatId));
+        if (chatMetaSnap.exists()) {
+            myClearTime = chatMetaSnap.data()[`cleared_${currentUid}`] || 0;
+        }
+    } catch (err) {
+        console.error("chatMeta read error:", err);
+    }
+
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
-        const docs = [];
-        snapshot.forEach(docSnap => {
+        const msgBox = document.getElementById("messages-box");
+        if (!msgBox) return;
+
+        // Collect all visible messages, sort chronologically, and append any new ones
+        const visibleDocs = [];
+        snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            if (data.receiverId === currentUid && !data.read) {
-                updateDoc(doc(db, "messages", docSnap.id), { read: true }).catch(() => {});
+            if ((data.timestamp || 0) > myClearTime) {
+                if (data.receiverId === currentUid && !data.read) {
+                    updateDoc(doc(db, "messages", docSnap.id), { read: true }).catch(() => {});
+                }
+                visibleDocs.push({ id: docSnap.id, data });
             }
-            docs.push({ id: docSnap.id, ...data });
         });
 
-        chatContext.latestDocs = docs;
-        if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
-            redrawMessagesBox(chatId, currentUid, chatContext.myClearTime, chatContext.latestDocs);
-        }
+        visibleDocs.sort((a, b) => (a.data.timestamp || 0) - (b.data.timestamp || 0));
+
+        // Remove any cleared temp/local rows if clear happened
+        msgBox.innerHTML = "";
+        visibleDocs.forEach(({ id, data }) => {
+            appendMessageToBox(msgBox, id, data, currentUid);
+        });
     }, (error) => {
         console.error("Chat room listener error:", error);
     });
-
-    // Load clear timestamp and redraw if needed
-    try {
-        const chatMetaRef = doc(db, "chatMeta", chatId);
-        const chatMetaSnap = await getDoc(chatMetaRef);
-        if (chatMetaSnap.exists() && window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
-            const chatMetaData = chatMetaSnap.data();
-            chatContext.myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
-            redrawMessagesBox(chatId, currentUid, chatContext.myClearTime, chatContext.latestDocs);
-        }
-    } catch (err) {
-        console.error("Error reading chatMeta:", err);
-    }
 
     if (autoStartVideo && activeCallId) {
         window.answerInAppVideoCall(activeCallId, buddyId);
@@ -815,11 +769,11 @@ window.sendTextMessage = async function(buddyId) {
         return;
     }
 
-    const chatId = [currentUid, buddyId].sort().join('_');
+    const chatId = [currentUid, buddyId].sort().join("_");
     const msgPayload = {
         senderId: currentUid,
         receiverId: buddyId,
-        chatId: chatId,
+        chatId,
         type: "text",
         content: text,
         timestamp: Date.now(),
@@ -828,20 +782,14 @@ window.sendTextMessage = async function(buddyId) {
 
     input.value = "";
 
-    localPendingMessages.push({ ...msgPayload, id: "pending_" + Date.now() });
-    if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
-        redrawMessagesBox(
-            chatId,
-            currentUid,
-            window.__activeChatContext.myClearTime,
-            window.__activeChatContext.latestDocs
-        );
-    }
-
     try {
-        await addDoc(collection(db, "messages"), msgPayload);
+        const docRef = await addDoc(collection(db, "messages"), msgPayload);
+        const msgBox = document.getElementById("messages-box");
+        if (msgBox && currentActiveBuddyId === buddyId) {
+            appendMessageToBox(msgBox, docRef.id, msgPayload, currentUid);
+        }
     } catch (error) {
-        console.error("Error sending message: ", error);
+        console.error("Error sending message:", error);
         alert("Failed to send message: " + error.message);
     }
 };
@@ -868,34 +816,28 @@ window.sendMediaMessage = async function(buddyId) {
         });
 
     const currentUid = auth.currentUser.uid;
-    const chatId = [currentUid, buddyId].sort().join('_');
+    const chatId = [currentUid, buddyId].sort().join("_");
     fileInput.value = "";
 
     const msgPayload = {
         senderId: currentUid,
         receiverId: buddyId,
-        chatId: chatId,
-        type: isImage ? 'image' : 'file',
+        chatId,
+        type: isImage ? "image" : "file",
         fileName: file.name,
         content: fileData,
         timestamp: Date.now(),
         read: false
     };
 
-    localPendingMessages.push({ ...msgPayload, id: "pending_" + Date.now() });
-    if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
-        redrawMessagesBox(
-            chatId,
-            currentUid,
-            window.__activeChatContext.myClearTime,
-            window.__activeChatContext.latestDocs
-        );
-    }
-
     try {
-        await addDoc(collection(db, "messages"), msgPayload);
+        const docRef = await addDoc(collection(db, "messages"), msgPayload);
+        const msgBox = document.getElementById("messages-box");
+        if (msgBox && currentActiveBuddyId === buddyId) {
+            appendMessageToBox(msgBox, docRef.id, msgPayload, currentUid);
+        }
     } catch (error) {
-        console.error("Error sending media: ", error);
+        console.error("Error sending media:", error);
         alert("Failed to send attachment.");
     }
 };
@@ -903,15 +845,12 @@ window.sendMediaMessage = async function(buddyId) {
 window.clearChatHistory = async function(buddyId) {
     if (confirm("Are you sure you want to clear your chat history? This will only remove messages from your view.")) {
         const currentUid = auth.currentUser.uid;
-        const chatId = [currentUid, buddyId].sort().join('_');
+        const chatId = [currentUid, buddyId].sort().join("_");
         const chatMetaRef = doc(db, "chatMeta", chatId);
-        const now = Date.now();
 
         await setDoc(chatMetaRef, {
-            [`cleared_${currentUid}`]: now
+            [`cleared_${currentUid}`]: Date.now()
         }, { merge: true });
-
-        localPendingMessages = localPendingMessages.filter(pm => pm.chatId !== chatId);
 
         const titleEl = document.getElementById("chat-buddy-title");
         const buddyName = titleEl ? titleEl.textContent : "Buddy";
@@ -929,7 +868,7 @@ window.blockBuddy = async function(buddyId) {
         }
         await updateDoc(userRef, { blockedUsers: blocked });
         alert("User blocked successfully.");
-        window.switchTab('finding');
+        window.switchTab("finding");
     }
 };
 
