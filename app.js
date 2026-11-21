@@ -645,12 +645,19 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         activeChatUnsubscribe = null;
     }
 
-    const currentUid = auth.currentUser.uid;
+    const currentUid = auth.currentUser ? auth.currentUser.uid : null;
+    if (!currentUid) {
+        console.error("openChat called with no authenticated user.");
+        return;
+    }
+
     const chatId = [currentUid, buddyId].sort().join('_');
     const chatMetaRef = doc(db, "chatMeta", chatId);
     const chatMetaSnap = await getDoc(chatMetaRef);
     const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
     const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
+
+    console.log("openChat initialized:", { currentUid, buddyId, buddyName, chatId, myClearTime });
 
     const safeBuddyName = escapeHtml(buddyName || "Buddy");
     const container = document.getElementById("chat-window-container");
@@ -693,11 +700,32 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         snapshot.forEach(docSnap => docList.push(docSnap));
         docList.sort((a, b) => (a.data().timestamp || 0) - (b.data().timestamp || 0));
 
+        console.log("Chat snapshot update:", {
+            chatId,
+            currentUid,
+            totalDocs: docList.length,
+            fromCache: snapshot.metadata.fromCache
+        });
+
         msgBox.innerHTML = "";
         docList.forEach(docSnap => {
             const m = docSnap.data();
+            const isVisible = (m.timestamp || 0) > myClearTime;
+            const isMe = m.senderId === currentUid;
 
-            if ((m.timestamp || 0) > myClearTime) {
+            console.log("Message item check:", {
+                docId: docSnap.id,
+                currentUid,
+                senderId: m.senderId,
+                receiverId: m.receiverId,
+                isMe,
+                isVisible,
+                timestamp: m.timestamp,
+                myClearTime,
+                content: m.content
+            });
+
+            if (isVisible) {
                 if (m.receiverId === currentUid && !m.read) {
                     updateDoc(doc(db, "messages", docSnap.id), { read: true }).catch(() => {});
                 }
@@ -712,7 +740,6 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
                     contentHtml = `<a href="${m.content}" download="${safeFileName}" class="text-blue-500 underline text-sm">📥 Download ${safeFileName}</a>`;
                 }
 
-                const isMe = m.senderId === currentUid;
                 const bubbleStyle = isMe ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
 
                 msgBox.innerHTML += `
@@ -740,13 +767,19 @@ window.sendTextMessage = async function(buddyId) {
     const text = input.value.trim();
     if (!text) return;
 
-    const currentUid = auth.currentUser.uid;
+    const currentUid = auth.currentUser ? auth.currentUser.uid : null;
+    if (!currentUid) {
+        alert("Session expired. Please log in again.");
+        return;
+    }
+
     const chatId = [currentUid, buddyId].sort().join('_');
+    console.log("Sending text message:", { currentUid, buddyId, chatId, text });
 
     input.value = "";
 
     try {
-        await addDoc(collection(db, "messages"), {
+        const docRef = await addDoc(collection(db, "messages"), {
             senderId: currentUid,
             receiverId: buddyId,
             chatId: chatId,
@@ -755,9 +788,10 @@ window.sendTextMessage = async function(buddyId) {
             timestamp: Date.now(),
             read: false
         });
+        console.log("Message saved to Firestore with ID:", docRef.id);
     } catch (error) {
         console.error("Error sending message: ", error);
-        alert("Failed to send message.");
+        alert("Failed to send message: " + error.message);
     }
 };
 
