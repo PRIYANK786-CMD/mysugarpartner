@@ -28,7 +28,7 @@ const db = getFirestore(app);
 window.auth = auth;
 const appContainer = document.getElementById("app");
 
-// ==========================================
+// // ==========================================
 // SECTION 2: CONSTANTS & WEBRTC STATE
 // ==========================================
 const countries = [
@@ -63,6 +63,7 @@ let localStream = null;
 let activeCallId = null;
 let callDocUnsubscribe = null;
 let activeChatUnsubscribe = null;
+let unreadUnsubscribes = [];
 let currentActiveBuddyId = null; // Tracks currently active chat room to prevent conversation breaks
 
 const rtcConfig = {
@@ -71,6 +72,22 @@ const rtcConfig = {
         { urls: 'stun:stun1.l.google.com:19302' }
     ]
 };
+
+function cleanupUnreadListeners() {
+    unreadUnsubscribes.forEach((unsub) => {
+        if (typeof unsub === "function") unsub();
+    });
+    unreadUnsubscribes = [];
+}
+
+function escapeHtml(str = "") {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 // ==========================================
 // SECTION 3: AUTH STATE LISTENER & ROUTER
@@ -264,7 +281,7 @@ function renderMainDashboard(user) {
         <div class="flex flex-col min-h-screen justify-between">
             <div>
                 <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.love ❤️</h1>
+                    <h1 class="text-xl font-bold text-pink-600">mysugarpartner.in ❤️</h1>
                     <div class="flex space-x-6 text-sm font-medium items-center">
                         <button onclick="switchTab('profile')" class="hover:text-pink-600">My Profile</button>
                         <button onclick="switchTab('edit')" class="hover:text-pink-600">Edit Profile</button>
@@ -295,32 +312,34 @@ window.switchTab = async function(tab) {
         activeChatUnsubscribe = null;
     }
 
+    cleanupUnreadListeners();
+
     const container = document.getElementById("dashboard-content");
     const currentUser = auth.currentUser;
     const userDocSnap = await getDoc(doc(db, "users", currentUser.uid));
-    const userData = userDocSnap.data();
+    const userData = userDocSnap.data() || {};
 
     if (tab === 'profile') {
         container.innerHTML = `
             <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow border text-center">
                 <h2 class="text-2xl font-bold text-pink-600 mb-4">My Profile Card</h2>
                 <img src="${userData.profilePic || 'https://via.placeholder.com/150'}" class="w-32 h-32 mx-auto rounded-full object-cover mb-4 border-4 border-pink-100">
-                <h3 class="font-bold text-xl">${userData.name || 'User'}, ${userData.age || ''}</h3>
-                <p class="text-gray-500 text-sm mt-1">Country: ${userData.country || ''}</p>
-                <p class="text-pink-600 font-medium text-sm mt-1">Looking for: ${userData.interest || ''}</p>
-                <p class="text-gray-600 text-xs mt-2">Diagnosed Year: ${userData.diagnosedYear || ''}</p>
-                <p class="text-gray-600 text-xs mt-1">Hobbies: ${userData.hobbies || ''}</p>
+                <h3 class="font-bold text-xl">${escapeHtml(userData.name || 'User')}, ${escapeHtml(userData.age || '')}</h3>
+                <p class="text-gray-500 text-sm mt-1">Country: ${escapeHtml(userData.country || '')}</p>
+                <p class="text-pink-600 font-medium text-sm mt-1">Looking for: ${escapeHtml(userData.interest || '')}</p>
+                <p class="text-gray-600 text-xs mt-2">Diagnosed Year: ${escapeHtml(userData.diagnosedYear || '')}</p>
+                <p class="text-gray-600 text-xs mt-1">Hobbies: ${escapeHtml(userData.hobbies || '')}</p>
             </div>
         `;
     }
     else if (tab === 'edit') {
-        let countryOptions = countries.map(c => `<option value="${c}" ${userData.country === c ? 'selected' : ''}>${c}</option>`).join('');
+        let countryOptions = countries.map(c => `<option value="${escapeHtml(c)}" ${userData.country === c ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
         container.innerHTML = `
             <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
                 <h2 class="text-2xl font-bold text-pink-600 mb-6">Edit Profile</h2>
                 <div class="space-y-4">
-                    <input type="text" id="e-name" value="${userData.name || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
-                    <input type="number" id="e-age" value="${userData.age || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
+                    <input type="text" id="e-name" value="${escapeHtml(userData.name || '')}" class="w-full px-4 py-2 border rounded-lg" placeholder="Full Name">
+                    <input type="number" id="e-age" value="${escapeHtml(userData.age || '')}" class="w-full px-4 py-2 border rounded-lg" placeholder="Age">
                     <select id="e-country" class="w-full px-4 py-2 border rounded-lg">${countryOptions}</select>
                     <select id="e-interest" class="w-full px-4 py-2 border rounded-lg">
                         <option value="Dating" ${userData.interest === 'Dating' ? 'selected' : ''}>Dating</option>
@@ -328,8 +347,8 @@ window.switchTab = async function(tab) {
                         <option value="Long-term relationship" ${userData.interest === 'Long-term relationship' ? 'selected' : ''}>Long-term relationship</option>
                         <option value="Marriage" ${userData.interest === 'Marriage' ? 'selected' : ''}>Marriage</option>
                     </select>
-                    <input type="number" id="e-diagnosed" value="${userData.diagnosedYear || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Diagnosed Year">
-                    <input type="text" id="e-hobbies" value="${userData.hobbies || ''}" class="w-full px-4 py-2 border rounded-lg" placeholder="Hobbies">
+                    <input type="number" id="e-diagnosed" value="${escapeHtml(userData.diagnosedYear || '')}" class="w-full px-4 py-2 border rounded-lg" placeholder="Diagnosed Year">
+                    <input type="text" id="e-hobbies" value="${escapeHtml(userData.hobbies || '')}" class="w-full px-4 py-2 border rounded-lg" placeholder="Hobbies">
                     <div>
                         <label class="block text-sm text-gray-600 mb-1">Change Profile Picture</label>
                         <input type="file" id="e-img" accept="image/*" class="w-full">
@@ -364,7 +383,7 @@ window.switchTab = async function(tab) {
         });
     }
     else if (tab === 'finding') {
-        let countryOptions = countries.map(c => `<option value="${c}">${c}</option>`).join('');
+        let countryOptions = countries.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
         container.innerHTML = `
             <div class="bg-white p-6 rounded-xl shadow-md mb-6 flex gap-4">
                 <select id="search-country" class="border p-2 rounded-lg"><option value="">All Countries</option>${countryOptions}</select>
@@ -379,14 +398,14 @@ window.switchTab = async function(tab) {
             </div>
             <div id="buddies-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
         `;
-        
+
         document.getElementById("filter-btn").addEventListener("click", async () => {
             const sCountry = document.getElementById("search-country").value;
             const sInterest = document.getElementById("search-interest").value;
             const snap = await getDocs(collection(db, "users"));
             const grid = document.getElementById("buddies-grid");
             grid.innerHTML = "";
-            
+
             snap.forEach(docSnap => {
                 const data = docSnap.data();
                 if (data.uid === currentUser.uid) return;
@@ -397,11 +416,11 @@ window.switchTab = async function(tab) {
                 grid.innerHTML += `
                     <div class="bg-white p-4 rounded-xl shadow border text-center">
                         <img src="${data.profilePic || 'https://via.placeholder.com/150'}" class="w-24 h-24 mx-auto rounded-full object-cover mb-3">
-                        <h3 class="font-bold text-lg">${data.name}, ${data.age}</h3>
-                        <p class="text-gray-500 text-sm">${data.country}</p>
-                        <p class="text-pink-600 font-medium text-xs mt-1">Looking for: ${data.interest}</p>
-                        <p class="text-gray-400 text-xs mt-1">Diagnosed: ${data.diagnosedYear} | Hobbies: ${data.hobbies}</p>
-                        <button onclick="sendRequest('${data.uid}')" class="mt-4 bg-pink-100 text-pink-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-pink-200">Send Buddy Request</button>
+                        <h3 class="font-bold text-lg">${escapeHtml(data.name || 'Buddy')}, ${escapeHtml(data.age || '')}</h3>
+                        <p class="text-gray-500 text-sm">${escapeHtml(data.country || '')}</p>
+                        <p class="text-pink-600 font-medium text-xs mt-1">Looking for: ${escapeHtml(data.interest || '')}</p>
+                        <p class="text-gray-400 text-xs mt-1">Diagnosed: ${escapeHtml(data.diagnosedYear || '')} | Hobbies: ${escapeHtml(data.hobbies || '')}</p>
+                        <button onclick="sendRequest('${escapeHtml(data.uid)}')" class="mt-4 bg-pink-100 text-pink-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-pink-200">Send Buddy Request</button>
                     </div>
                 `;
             });
@@ -426,10 +445,10 @@ window.switchTab = async function(tab) {
             if (sender) {
                 incList.innerHTML += `
                     <div class="flex items-center justify-between border-b py-3">
-                        <div><b>${sender.name}</b> (${sender.country})</div>
+                        <div><b>${escapeHtml(sender.name || 'Buddy')}</b> (${escapeHtml(sender.country || '')})</div>
                         <div class="space-x-2">
-                            <button onclick="respondRequest('${reqDoc.id}', 'accepted')" class="bg-green-500 text-white px-3 py-1 rounded">Accept</button>
-                            <button onclick="respondRequest('${reqDoc.id}', 'rejected')" class="bg-red-500 text-white px-3 py-1 rounded">Reject</button>
+                            <button onclick="respondRequest('${escapeHtml(reqDoc.id)}', 'accepted')" class="bg-green-500 text-white px-3 py-1 rounded">Accept</button>
+                            <button onclick="respondRequest('${escapeHtml(reqDoc.id)}', 'rejected')" class="bg-red-500 text-white px-3 py-1 rounded">Reject</button>
                         </div>
                     </div>
                 `;
@@ -446,8 +465,8 @@ window.switchTab = async function(tab) {
             if (receiver) {
                 outList.innerHTML += `
                     <div class="flex items-center justify-between border-b py-3">
-                        <div><b>${receiver.name}</b></div>
-                        <span class="text-sm font-semibold px-2 py-1 rounded ${req.status === 'accepted' ? 'bg-green-100 text-green-700' : req.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${req.status}</span>
+                        <div><b>${escapeHtml(receiver.name || 'Buddy')}</b></div>
+                        <span class="text-sm font-semibold px-2 py-1 rounded ${req.status === 'accepted' ? 'bg-green-100 text-green-700' : req.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${escapeHtml(req.status)}</span>
                     </div>
                 `;
             }
@@ -464,11 +483,11 @@ window.switchTab = async function(tab) {
         `;
 
         const buddyListContainer = document.getElementById("chat-buddies-list");
-        
+
         const sentQuery = query(collection(db, "requests"), where("senderId", "==", currentUser.uid), where("status", "==", "accepted"));
         const recvQuery = query(collection(db, "requests"), where("receiverId", "==", currentUser.uid), where("status", "==", "accepted"));
         const [sentSnap, recvSnap] = await Promise.all([getDocs(sentQuery), getDocs(recvQuery)]);
-        
+
         const acceptedRequests = [];
         const seenReqs = new Set();
         [...sentSnap.docs, ...recvSnap.docs].forEach(docSnap => {
@@ -483,32 +502,41 @@ window.switchTab = async function(tab) {
             const buddyDoc = await getDoc(doc(db, "users", buddyId));
             const bData = buddyDoc.data();
             if (bData) {
+                const buddyNameSafe = escapeHtml(bData.name || "Buddy");
                 const liveDotHtml = bData.isLive ? `<span class="live-dot ml-2" title="Live Now"></span>` : '';
-                
-                const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
-                onSnapshot(msgQuery, (snapshot) => {
-                    if (currentActiveBuddyId === buddyId) return; // Skip badge if chat is already open
 
-                    let unreadCount = snapshot.docs.filter(d => !d.data().read).length;
-                    let badgeHtml = unreadCount > 0 ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>` : '';
-                    
-                    let buddyEl = document.getElementById(`buddy-item-${buddyId}`);
+                const itemEl = document.createElement("div");
+                itemEl.id = `buddy-item-${buddyId}`;
+                itemEl.className = "flex items-center p-3 hover:bg-pink-50 rounded-lg cursor-pointer border-b";
+                itemEl.innerHTML = `
+                    <img src="${bData.profilePic || 'https://via.placeholder.com/150'}" class="w-10 h-10 rounded-full object-cover mr-3">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-sm flex items-center">${buddyNameSafe} ${liveDotHtml}</h4>
+                        <span class="text-xs text-gray-400">Click to chat</span>
+                    </div>
+                    <div class="buddy-badge"></div>
+                `;
+                itemEl.addEventListener("click", () => {
+                    window.openChat(bData.uid, bData.name || "Buddy");
+                });
+                buddyListContainer.appendChild(itemEl);
+
+                const msgQuery = query(collection(db, "messages"), where("receiverId", "==", currentUser.uid), where("senderId", "==", buddyId));
+                const unsub = onSnapshot(msgQuery, (snapshot) => {
+                    if (currentActiveBuddyId === buddyId) return;
+
+                    const unreadCount = snapshot.docs.filter(d => !d.data().read).length;
+                    const badgeHtml = unreadCount > 0
+                        ? `<span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-auto">${unreadCount} new</span>`
+                        : '';
+
+                    const buddyEl = document.getElementById(`buddy-item-${buddyId}`);
                     if (buddyEl) {
-                        let badgeContainer = buddyEl.querySelector('.buddy-badge');
+                        const badgeContainer = buddyEl.querySelector('.buddy-badge');
                         if (badgeContainer) badgeContainer.innerHTML = badgeHtml;
                     }
                 });
-
-                buddyListContainer.innerHTML += `
-                    <div id="buddy-item-${buddyId}" onclick="openChat('${bData.uid}', '${bData.name}')" class="flex items-center p-3 hover:bg-pink-50 rounded-lg cursor-pointer border-b">
-                        <img src="${bData.profilePic || 'https://via.placeholder.com/150'}" class="w-10 h-10 rounded-full object-cover mr-3">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-sm flex items-center">${bData.name} ${liveDotHtml}</h4>
-                            <span class="text-xs text-gray-400">Click to chat</span>
-                        </div>
-                        <div class="buddy-badge"></div>
-                    </div>
-                `;
+                unreadUnsubscribes.push(unsub);
             }
         }
     }
@@ -559,14 +587,15 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
     const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
 
+    const safeBuddyName = escapeHtml(buddyName || "Buddy");
     const container = document.getElementById("chat-window-container");
     container.innerHTML = `
         <div class="flex justify-between items-center border-b pb-3 mb-2">
-            <h3 class="font-bold text-lg">${buddyName}</h3>
+            <h3 id="chat-buddy-title" class="font-bold text-lg">${safeBuddyName}</h3>
             <div class="space-x-3 flex items-center">
-                <button onclick="startInAppVideoCall('${buddyId}')" class="bg-pink-600 text-white px-3 py-1 rounded text-sm font-semibold">📹 Video Call</button>
-                <button onclick="clearChatHistory('${buddyId}')" class="text-gray-500 text-sm hover:underline">Clear Chat</button>
-                <button onclick="blockBuddy('${buddyId}')" class="text-red-500 text-sm hover:underline">Block</button>
+                <button onclick="startInAppVideoCall('${escapeHtml(buddyId)}')" class="bg-pink-600 text-white px-3 py-1 rounded text-sm font-semibold">📹 Video Call</button>
+                <button onclick="clearChatHistory('${escapeHtml(buddyId)}')" class="text-gray-500 text-sm hover:underline">Clear Chat</button>
+                <button onclick="blockBuddy('${escapeHtml(buddyId)}')" class="text-red-500 text-sm hover:underline">Block</button>
             </div>
         </div>
         <div id="video-container" class="hidden relative bg-black rounded-xl overflow-hidden mb-3 h-64 flex items-center justify-center">
@@ -576,10 +605,10 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         </div>
         <div id="messages-box" class="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col" style="-webkit-overflow-scrolling: touch;"></div>
         <div class="flex gap-2 pt-3 border-t mt-2">
-            <input type="file" id="media-input" class="hidden" onchange="sendMediaMessage('${buddyId}')">
+            <input type="file" id="media-input" class="hidden" onchange="sendMediaMessage('${escapeHtml(buddyId)}')">
             <button onclick="document.getElementById('media-input').click()" class="bg-gray-200 px-3 py-2 rounded">📎</button>
             <input type="text" id="chat-msg-input" placeholder="Type a message..." class="flex-1 border px-3 py-2 rounded-lg">
-            <button onclick="sendTextMessage('${buddyId}')" class="bg-pink-600 text-white px-4 py-2 rounded-lg">Send</button>
+            <button onclick="sendTextMessage('${escapeHtml(buddyId)}')" class="bg-pink-600 text-white px-4 py-2 rounded-lg">Send</button>
         </div>
     `;
 
@@ -590,12 +619,11 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    // Real-time Firestore listener with client-side timestamp sorting
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const msgBox = document.getElementById("messages-box");
         if (!msgBox) return;
-        
+
         const docList = [];
         snapshot.forEach(docSnap => docList.push(docSnap));
         docList.sort((a, b) => (a.data().timestamp || 0) - (b.data().timestamp || 0));
@@ -603,14 +631,21 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         msgBox.innerHTML = "";
         docList.forEach(docSnap => {
             const m = docSnap.data();
-            
-            if (m.timestamp > myClearTime) {
+
+            if ((m.timestamp || 0) > myClearTime) {
                 if (m.receiverId === currentUid && !m.read) {
-                    updateDoc(doc(db, "messages", docSnap.id), { read: true });
+                    updateDoc(doc(db, "messages", docSnap.id), { read: true }).catch(() => {});
                 }
 
-                let contentHtml = m.type === 'text' ? `<p>${m.content}</p>` : `<a href="${m.content}" download="${m.fileName || 'file'}" class="text-blue-500 underline text-sm">📥 Download ${m.fileName || 'Attachment'}</a>`;
-                if (m.type === 'image') contentHtml = `<img src="${m.content}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="image.jpg" class="text-xs text-blue-500 underline">Save Image</a>`;
+                const safeContent = escapeHtml(m.content || "");
+                const safeFileName = escapeHtml(m.fileName || "file");
+                let contentHtml = `<p class="break-words">${safeContent}</p>`;
+
+                if (m.type === 'image') {
+                    contentHtml = `<img src="${m.content}" alt="${safeFileName}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="${safeFileName}" class="text-xs text-blue-500 underline">Save Image</a>`;
+                } else if (m.type === 'file') {
+                    contentHtml = `<a href="${m.content}" download="${safeFileName}" class="text-blue-500 underline text-sm">📥 Download ${safeFileName}</a>`;
+                }
 
                 const isMe = m.senderId === currentUid;
                 const bubbleStyle = isMe ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
@@ -663,12 +698,25 @@ window.sendMediaMessage = async function(buddyId) {
     const fileInput = document.getElementById("media-input");
     const file = fileInput.files[0];
     if (!file) return;
-    const base64Data = await convertImageToBase64(file);
+
+    if (file.size > 700 * 1024) {
+        alert("Please choose a file smaller than 700 KB.");
+        fileInput.value = "";
+        return;
+    }
+
+    const isImage = file.type.startsWith("image/");
+    const fileData = isImage
+        ? await convertImageToBase64(file)
+        : await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
 
     const currentUid = auth.currentUser.uid;
     const chatId = [currentUid, buddyId].sort().join('_');
-    const isImage = file.type.includes('image');
-
     fileInput.value = "";
 
     try {
@@ -678,7 +726,7 @@ window.sendMediaMessage = async function(buddyId) {
             chatId: chatId,
             type: isImage ? 'image' : 'file',
             fileName: file.name,
-            content: base64Data,
+            content: fileData,
             timestamp: Date.now(),
             read: false
         });
@@ -693,12 +741,14 @@ window.clearChatHistory = async function(buddyId) {
         const currentUid = auth.currentUser.uid;
         const chatId = [currentUid, buddyId].sort().join('_');
         const chatMetaRef = doc(db, "chatMeta", chatId);
-        
+
         await setDoc(chatMetaRef, {
             [`cleared_${currentUid}`]: Date.now()
         }, { merge: true });
 
-        window.openChat(buddyId, document.querySelector('#chat-window-container h3').innerText);
+        const titleEl = document.getElementById("chat-buddy-title");
+        const buddyName = titleEl ? titleEl.textContent : "Buddy";
+        window.openChat(buddyId, buddyName);
     }
 };
 
@@ -706,8 +756,10 @@ window.blockBuddy = async function(buddyId) {
     if (confirm("Are you sure you want to block this user?")) {
         const userRef = doc(db, "users", auth.currentUser.uid);
         const userDoc = await getDoc(userRef);
-        let blocked = userDoc.data().blockedUsers || [];
-        blocked.push(buddyId);
+        let blocked = (userDoc.data() && userDoc.data().blockedUsers) || [];
+        if (!blocked.includes(buddyId)) {
+            blocked.push(buddyId);
+        }
         await updateDoc(userRef, { blockedUsers: blocked });
         alert("User blocked successfully.");
         window.switchTab('finding');
@@ -921,6 +973,7 @@ window.handleLogout = async function() {
         window.endInAppVideoCall();
         if (activeChatUnsubscribe) activeChatUnsubscribe();
         if (globalCallUnsubscribe) globalCallUnsubscribe();
+        cleanupUnreadListeners();
         await signOut(auth);
         window.location.reload();
     } catch (error) {
