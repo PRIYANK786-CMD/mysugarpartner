@@ -617,16 +617,9 @@ function listenForIncomingMessages(userId) {
             const msgId = change.doc.id;
             const m = change.doc.data();
 
-            // If this chat is currently open, redraw immediately so new messages always appear live
+            // If this buddy's chat is currently open, redraw immediately
             if (currentActiveBuddyId === m.senderId && window.__activeChatContext) {
                 const ctx = window.__activeChatContext;
-                const existingIdx = ctx.latestDocs.findIndex(d => d.id === msgId);
-                const fullDoc = { id: msgId, ...m };
-                if (existingIdx >= 0) {
-                    ctx.latestDocs[existingIdx] = fullDoc;
-                } else {
-                    ctx.latestDocs.push(fullDoc);
-                }
                 redrawMessagesBox(ctx.chatId, ctx.currentUid, ctx.myClearTime, ctx.latestDocs);
                 if (!m.read) {
                     updateDoc(doc(db, "messages", msgId), { read: true }).catch(() => {});
@@ -677,11 +670,18 @@ function redrawMessagesBox(chatId, currentUid, myClearTime, firestoreDocs = []) 
     const msgBox = document.getElementById("messages-box");
     if (!msgBox) return;
 
-    const syncedContents = new Set(
-        firestoreDocs.map(d => `${d.senderId}_${d.type}_${d.content}`)
+    // Deduplicate Firestore docs by ID
+    const uniqueFirestoreMap = new Map();
+    firestoreDocs.forEach(d => {
+        if (d.id) uniqueFirestoreMap.set(d.id, d);
+    });
+    const cleanFirestoreDocs = Array.from(uniqueFirestoreMap.values());
+
+    const syncedKeys = new Set(
+        cleanFirestoreDocs.map(d => `${d.senderId}_${d.type}_${d.content}`)
     );
     localPendingMessages = localPendingMessages.filter(
-        pm => pm.chatId !== chatId || !syncedContents.has(`${pm.senderId}_${pm.type}_${pm.content}`)
+        pm => pm.chatId !== chatId || !syncedKeys.has(`${pm.senderId}_${pm.type}_${pm.content}`)
     );
 
     const activePending = localPendingMessages.filter(
@@ -689,7 +689,7 @@ function redrawMessagesBox(chatId, currentUid, myClearTime, firestoreDocs = []) 
     );
 
     const combined = [
-        ...firestoreDocs.filter(m => (m.timestamp || 0) > myClearTime),
+        ...cleanFirestoreDocs.filter(m => (m.timestamp || 0) > myClearTime),
         ...activePending
     ];
 
@@ -723,15 +723,12 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     }
 
     const chatId = [currentUid, buddyId].sort().join('_');
-    const chatMetaRef = doc(db, "chatMeta", chatId);
-    const chatMetaSnap = await getDoc(chatMetaRef);
-    const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
-    const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
 
+    // Initialize context right away so messages work even before chatMeta finishes reading
     const chatContext = {
         chatId,
         currentUid,
-        myClearTime,
+        myClearTime: 0,
         latestDocs: []
     };
     window.__activeChatContext = chatContext;
@@ -768,6 +765,7 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
+    // Attach real-time messages listener immediately
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const docs = [];
@@ -780,10 +778,25 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         });
 
         chatContext.latestDocs = docs;
-        redrawMessagesBox(chatId, currentUid, myClearTime, chatContext.latestDocs);
+        if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
+            redrawMessagesBox(chatId, currentUid, chatContext.myClearTime, chatContext.latestDocs);
+        }
     }, (error) => {
         console.error("Chat room listener error:", error);
     });
+
+    // Load clear timestamp and redraw if needed
+    try {
+        const chatMetaRef = doc(db, "chatMeta", chatId);
+        const chatMetaSnap = await getDoc(chatMetaRef);
+        if (chatMetaSnap.exists() && window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
+            const chatMetaData = chatMetaSnap.data();
+            chatContext.myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
+            redrawMessagesBox(chatId, currentUid, chatContext.myClearTime, chatContext.latestDocs);
+        }
+    } catch (err) {
+        console.error("Error reading chatMeta:", err);
+    }
 
     if (autoStartVideo && activeCallId) {
         window.answerInAppVideoCall(activeCallId, buddyId);
