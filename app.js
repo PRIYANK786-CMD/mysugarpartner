@@ -28,7 +28,7 @@ const db = getFirestore(app);
 window.auth = auth;
 const appContainer = document.getElementById("app");
 
-// // ==========================================
+// ==========================================
 // SECTION 2: CONSTANTS & WEBRTC STATE
 // ==========================================
 const countries = [
@@ -58,6 +58,7 @@ const countries = [
 ];
 
 let globalCallUnsubscribe = null;
+let globalMsgUnsubscribe = null;
 let peerConnection = null;
 let localStream = null;
 let activeCallId = null;
@@ -65,6 +66,8 @@ let callDocUnsubscribe = null;
 let activeChatUnsubscribe = null;
 let unreadUnsubscribes = [];
 let currentActiveBuddyId = null; // Tracks currently active chat room to prevent conversation breaks
+const notifiedMessageIds = new Set();
+let chatAppStartedAt = Date.now();
 
 const rtcConfig = {
     iceServers: [
@@ -103,10 +106,12 @@ onAuthStateChanged(auth, async (user) => {
             } else {
                 renderMainDashboard(user);
                 listenForIncomingCalls(user.uid);
+                listenForIncomingMessages(user.uid);
             }
         }
     } else {
         if (globalCallUnsubscribe) globalCallUnsubscribe();
+        if (globalMsgUnsubscribe) globalMsgUnsubscribe();
         renderAuthView();
     }
 });
@@ -566,6 +571,66 @@ window.respondRequest = async function(reqId, status) {
 // ==========================================
 // SECTION 6: REALTIME CHAT SYSTEM
 // ==========================================
+function showNewMessageAlert(senderName, text, senderId) {
+    const existing = document.getElementById("new-msg-toast");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "new-msg-toast";
+    toast.className = "fixed bottom-5 right-5 bg-white border-l-4 border-pink-600 shadow-2xl rounded-xl p-4 max-w-sm z-50 cursor-pointer";
+    toast.innerHTML = `
+        <p class="text-xs font-bold text-pink-600">New message from ${escapeHtml(senderName)}</p>
+        <p class="text-sm text-gray-800 mt-1 break-words">${escapeHtml(text)}</p>
+    `;
+    toast.addEventListener("click", async () => {
+        toast.remove();
+        await window.switchTab("chat");
+        setTimeout(() => window.openChat(senderId, senderName), 250);
+    });
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+
+    if ("Notification" in window && Notification.permission === "granted") {
+        const n = new Notification(`New message from ${senderName}`, { body: text });
+        n.onclick = async () => {
+            window.focus();
+            await window.switchTab("chat");
+            setTimeout(() => window.openChat(senderId, senderName), 250);
+        };
+    }
+}
+
+function listenForIncomingMessages(userId) {
+    if (globalMsgUnsubscribe) globalMsgUnsubscribe();
+    chatAppStartedAt = Date.now();
+
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+    }
+
+    const q = query(collection(db, "messages"), where("receiverId", "==", userId));
+    globalMsgUnsubscribe = onSnapshot(q, async (snapshot) => {
+        for (const change of snapshot.docChanges()) {
+            if (change.type !== "added") continue;
+            const msgId = change.doc.id;
+            const m = change.doc.data();
+
+            if (notifiedMessageIds.has(msgId)) continue;
+            notifiedMessageIds.add(msgId);
+
+            if ((m.timestamp || 0) < chatAppStartedAt - 2000) continue;
+            if (m.read || currentActiveBuddyId === m.senderId) continue;
+
+            const senderSnap = await getDoc(doc(db, "users", m.senderId));
+            const senderName = (senderSnap.exists() && senderSnap.data().name) || "Buddy";
+            const preview = m.type === "text" ? (m.content || "") : `Sent a ${m.type || "file"}`;
+            showNewMessageAlert(senderName, preview, m.senderId);
+        }
+    }, (error) => {
+        console.error("Incoming message listener error:", error);
+    });
+}
+
 window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     currentActiveBuddyId = buddyId;
 
@@ -660,6 +725,8 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
             }
         });
         msgBox.scrollTop = msgBox.scrollHeight;
+    }, (error) => {
+        console.error("Chat room listener error:", error);
     });
 
     if (autoStartVideo && activeCallId) {
@@ -973,6 +1040,7 @@ window.handleLogout = async function() {
         window.endInAppVideoCall();
         if (activeChatUnsubscribe) activeChatUnsubscribe();
         if (globalCallUnsubscribe) globalCallUnsubscribe();
+        if (globalMsgUnsubscribe) globalMsgUnsubscribe();
         cleanupUnreadListeners();
         await signOut(auth);
         window.location.reload();
