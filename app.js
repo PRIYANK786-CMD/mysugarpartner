@@ -571,6 +571,8 @@ window.respondRequest = async function(reqId, status) {
 // ==========================================
 // SECTION 6: REALTIME CHAT SYSTEM
 // ==========================================
+let localPendingMessages = []; // Stores temporary sent messages until Firestore snapshot includes them
+
 function showNewMessageAlert(senderName, text, senderId) {
     const existing = document.getElementById("new-msg-toast");
     if (existing) existing.remove();
@@ -631,6 +633,59 @@ function listenForIncomingMessages(userId) {
     });
 }
 
+function renderChatMessageBubble(msgBox, m, currentUid) {
+    const safeContent = escapeHtml(m.content || "");
+    const safeFileName = escapeHtml(m.fileName || "file");
+    let contentHtml = `<p class="break-words">${safeContent}</p>`;
+
+    if (m.type === 'image') {
+        contentHtml = `<img src="${m.content}" alt="${safeFileName}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="${safeFileName}" class="text-xs text-blue-500 underline">Save Image</a>`;
+    } else if (m.type === 'file') {
+        contentHtml = `<a href="${m.content}" download="${safeFileName}" class="text-blue-500 underline text-sm">📥 Download ${safeFileName}</a>`;
+    }
+
+    const isMe = m.senderId === currentUid;
+    const bubbleStyle = isMe ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
+
+    msgBox.innerHTML += `
+        <div class="flex ${isMe ? 'justify-end' : 'justify-start'} w-full">
+            <div class="${bubbleStyle} p-3 rounded-xl max-w-xs">
+                ${contentHtml}
+            </div>
+        </div>
+    `;
+}
+
+function redrawMessagesBox(chatId, currentUid, myClearTime, firestoreDocs = []) {
+    const msgBox = document.getElementById("messages-box");
+    if (!msgBox) return;
+
+    // Remove pending messages that already arrived from Firestore
+    const syncedContents = new Set(
+        firestoreDocs.map(d => `${d.senderId}_${d.type}_${d.content}`)
+    );
+    localPendingMessages = localPendingMessages.filter(
+        pm => pm.chatId !== chatId || !syncedContents.has(`${pm.senderId}_${pm.type}_${pm.content}`)
+    );
+
+    const activePending = localPendingMessages.filter(
+        pm => pm.chatId === chatId && (pm.timestamp || 0) > myClearTime
+    );
+
+    const combined = [
+        ...firestoreDocs.filter(m => (m.timestamp || 0) > myClearTime),
+        ...activePending
+    ];
+
+    combined.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    msgBox.innerHTML = "";
+    combined.forEach(m => {
+        renderChatMessageBubble(msgBox, m, currentUid);
+    });
+    msgBox.scrollTop = msgBox.scrollHeight;
+}
+
 window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     currentActiveBuddyId = buddyId;
 
@@ -657,7 +712,7 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
     const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
 
-    console.log("openChat initialized:", { currentUid, buddyId, buddyName, chatId, myClearTime });
+    let latestFirestoreDocs = [];
 
     const safeBuddyName = escapeHtml(buddyName || "Buddy");
     const container = document.getElementById("chat-window-container");
@@ -691,67 +746,22 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
+    // Store active chat metadata so sendTextMessage / sendMediaMessage can redraw immediately
+    window.__activeChatContext = { chatId, currentUid, myClearTime, getDocs: () => latestFirestoreDocs };
+
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
-        const msgBox = document.getElementById("messages-box");
-        if (!msgBox) return;
-
-        const docList = [];
-        snapshot.forEach(docSnap => docList.push(docSnap));
-        docList.sort((a, b) => (a.data().timestamp || 0) - (b.data().timestamp || 0));
-
-        console.log("Chat snapshot update:", {
-            chatId,
-            currentUid,
-            totalDocs: docList.length,
-            fromCache: snapshot.metadata.fromCache
-        });
-
-        msgBox.innerHTML = "";
-        docList.forEach(docSnap => {
-            const m = docSnap.data();
-            const isVisible = (m.timestamp || 0) > myClearTime;
-            const isMe = m.senderId === currentUid;
-
-            console.log("Message item check:", {
-                docId: docSnap.id,
-                currentUid,
-                senderId: m.senderId,
-                receiverId: m.receiverId,
-                isMe,
-                isVisible,
-                timestamp: m.timestamp,
-                myClearTime,
-                content: m.content
-            });
-
-            if (isVisible) {
-                if (m.receiverId === currentUid && !m.read) {
-                    updateDoc(doc(db, "messages", docSnap.id), { read: true }).catch(() => {});
-                }
-
-                const safeContent = escapeHtml(m.content || "");
-                const safeFileName = escapeHtml(m.fileName || "file");
-                let contentHtml = `<p class="break-words">${safeContent}</p>`;
-
-                if (m.type === 'image') {
-                    contentHtml = `<img src="${m.content}" alt="${safeFileName}" class="max-w-xs rounded-lg mb-1"><a href="${m.content}" download="${safeFileName}" class="text-xs text-blue-500 underline">Save Image</a>`;
-                } else if (m.type === 'file') {
-                    contentHtml = `<a href="${m.content}" download="${safeFileName}" class="text-blue-500 underline text-sm">📥 Download ${safeFileName}</a>`;
-                }
-
-                const bubbleStyle = isMe ? 'bg-pink-100 text-gray-800' : 'bg-gray-100 text-gray-800';
-
-                msgBox.innerHTML += `
-                    <div class="flex ${isMe ? 'justify-end' : 'justify-start'} w-full">
-                        <div class="${bubbleStyle} p-3 rounded-xl max-w-xs">
-                            ${contentHtml}
-                        </div>
-                    </div>
-                `;
+        const docs = [];
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.receiverId === currentUid && !data.read) {
+                updateDoc(doc(db, "messages", docSnap.id), { read: true }).catch(() => {});
             }
+            docs.push({ id: docSnap.id, ...data });
         });
-        msgBox.scrollTop = msgBox.scrollHeight;
+
+        latestFirestoreDocs = docs;
+        redrawMessagesBox(chatId, currentUid, myClearTime, latestFirestoreDocs);
     }, (error) => {
         console.error("Chat room listener error:", error);
     });
@@ -774,21 +784,31 @@ window.sendTextMessage = async function(buddyId) {
     }
 
     const chatId = [currentUid, buddyId].sort().join('_');
-    console.log("Sending text message:", { currentUid, buddyId, chatId, text });
+    const msgPayload = {
+        senderId: currentUid,
+        receiverId: buddyId,
+        chatId: chatId,
+        type: "text",
+        content: text,
+        timestamp: Date.now(),
+        read: false
+    };
 
     input.value = "";
 
+    // Show immediately on sender's screen
+    localPendingMessages.push({ ...msgPayload, id: "pending_" + Date.now() });
+    if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
+        redrawMessagesBox(
+            chatId,
+            currentUid,
+            window.__activeChatContext.myClearTime,
+            window.__activeChatContext.getDocs()
+        );
+    }
+
     try {
-        const docRef = await addDoc(collection(db, "messages"), {
-            senderId: currentUid,
-            receiverId: buddyId,
-            chatId: chatId,
-            type: "text",
-            content: text,
-            timestamp: Date.now(),
-            read: false
-        });
-        console.log("Message saved to Firestore with ID:", docRef.id);
+        await addDoc(collection(db, "messages"), msgPayload);
     } catch (error) {
         console.error("Error sending message: ", error);
         alert("Failed to send message: " + error.message);
@@ -820,17 +840,29 @@ window.sendMediaMessage = async function(buddyId) {
     const chatId = [currentUid, buddyId].sort().join('_');
     fileInput.value = "";
 
+    const msgPayload = {
+        senderId: currentUid,
+        receiverId: buddyId,
+        chatId: chatId,
+        type: isImage ? 'image' : 'file',
+        fileName: file.name,
+        content: fileData,
+        timestamp: Date.now(),
+        read: false
+    };
+
+    localPendingMessages.push({ ...msgPayload, id: "pending_" + Date.now() });
+    if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
+        redrawMessagesBox(
+            chatId,
+            currentUid,
+            window.__activeChatContext.myClearTime,
+            window.__activeChatContext.getDocs()
+        );
+    }
+
     try {
-        await addDoc(collection(db, "messages"), {
-            senderId: currentUid,
-            receiverId: buddyId,
-            chatId: chatId,
-            type: isImage ? 'image' : 'file',
-            fileName: file.name,
-            content: fileData,
-            timestamp: Date.now(),
-            read: false
-        });
+        await addDoc(collection(db, "messages"), msgPayload);
     } catch (error) {
         console.error("Error sending media: ", error);
         alert("Failed to send attachment.");
@@ -842,10 +874,13 @@ window.clearChatHistory = async function(buddyId) {
         const currentUid = auth.currentUser.uid;
         const chatId = [currentUid, buddyId].sort().join('_');
         const chatMetaRef = doc(db, "chatMeta", chatId);
+        const now = Date.now();
 
         await setDoc(chatMetaRef, {
-            [`cleared_${currentUid}`]: Date.now()
+            [`cleared_${currentUid}`]: now
         }, { merge: true });
+
+        localPendingMessages = localPendingMessages.filter(pm => pm.chatId !== chatId);
 
         const titleEl = document.getElementById("chat-buddy-title");
         const buddyName = titleEl ? titleEl.textContent : "Buddy";
