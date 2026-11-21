@@ -613,15 +613,32 @@ function listenForIncomingMessages(userId) {
     const q = query(collection(db, "messages"), where("receiverId", "==", userId));
     globalMsgUnsubscribe = onSnapshot(q, async (snapshot) => {
         for (const change of snapshot.docChanges()) {
-            if (change.type !== "added") continue;
+            if (change.type !== "added" && change.type !== "modified") continue;
             const msgId = change.doc.id;
             const m = change.doc.data();
+
+            // If this chat is currently open, redraw immediately so new messages always appear live
+            if (currentActiveBuddyId === m.senderId && window.__activeChatContext) {
+                const ctx = window.__activeChatContext;
+                const existingIdx = ctx.latestDocs.findIndex(d => d.id === msgId);
+                const fullDoc = { id: msgId, ...m };
+                if (existingIdx >= 0) {
+                    ctx.latestDocs[existingIdx] = fullDoc;
+                } else {
+                    ctx.latestDocs.push(fullDoc);
+                }
+                redrawMessagesBox(ctx.chatId, ctx.currentUid, ctx.myClearTime, ctx.latestDocs);
+                if (!m.read) {
+                    updateDoc(doc(db, "messages", msgId), { read: true }).catch(() => {});
+                }
+                continue;
+            }
 
             if (notifiedMessageIds.has(msgId)) continue;
             notifiedMessageIds.add(msgId);
 
             if ((m.timestamp || 0) < chatAppStartedAt - 2000) continue;
-            if (m.read || currentActiveBuddyId === m.senderId) continue;
+            if (m.read) continue;
 
             const senderSnap = await getDoc(doc(db, "users", m.senderId));
             const senderName = (senderSnap.exists() && senderSnap.data().name) || "Buddy";
@@ -660,7 +677,6 @@ function redrawMessagesBox(chatId, currentUid, myClearTime, firestoreDocs = []) 
     const msgBox = document.getElementById("messages-box");
     if (!msgBox) return;
 
-    // Remove pending messages that already arrived from Firestore
     const syncedContents = new Set(
         firestoreDocs.map(d => `${d.senderId}_${d.type}_${d.content}`)
     );
@@ -712,7 +728,13 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
     const chatMetaData = chatMetaSnap.exists() ? chatMetaSnap.data() : {};
     const myClearTime = chatMetaData[`cleared_${currentUid}`] || 0;
 
-    let latestFirestoreDocs = [];
+    const chatContext = {
+        chatId,
+        currentUid,
+        myClearTime,
+        latestDocs: []
+    };
+    window.__activeChatContext = chatContext;
 
     const safeBuddyName = escapeHtml(buddyName || "Buddy");
     const container = document.getElementById("chat-window-container");
@@ -746,9 +768,6 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
         }
     });
 
-    // Store active chat metadata so sendTextMessage / sendMediaMessage can redraw immediately
-    window.__activeChatContext = { chatId, currentUid, myClearTime, getDocs: () => latestFirestoreDocs };
-
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
     activeChatUnsubscribe = onSnapshot(q, (snapshot) => {
         const docs = [];
@@ -760,8 +779,8 @@ window.openChat = async function(buddyId, buddyName, autoStartVideo = false) {
             docs.push({ id: docSnap.id, ...data });
         });
 
-        latestFirestoreDocs = docs;
-        redrawMessagesBox(chatId, currentUid, myClearTime, latestFirestoreDocs);
+        chatContext.latestDocs = docs;
+        redrawMessagesBox(chatId, currentUid, myClearTime, chatContext.latestDocs);
     }, (error) => {
         console.error("Chat room listener error:", error);
     });
@@ -796,14 +815,13 @@ window.sendTextMessage = async function(buddyId) {
 
     input.value = "";
 
-    // Show immediately on sender's screen
     localPendingMessages.push({ ...msgPayload, id: "pending_" + Date.now() });
     if (window.__activeChatContext && window.__activeChatContext.chatId === chatId) {
         redrawMessagesBox(
             chatId,
             currentUid,
             window.__activeChatContext.myClearTime,
-            window.__activeChatContext.getDocs()
+            window.__activeChatContext.latestDocs
         );
     }
 
@@ -857,7 +875,7 @@ window.sendMediaMessage = async function(buddyId) {
             chatId,
             currentUid,
             window.__activeChatContext.myClearTime,
-            window.__activeChatContext.getDocs()
+            window.__activeChatContext.latestDocs
         );
     }
 
